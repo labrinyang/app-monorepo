@@ -7,9 +7,8 @@ import {
   useState,
 } from 'react';
 
-import { useIntl } from 'react-intl';
-
 import BigNumber from 'bignumber.js';
+import { useIntl } from 'react-intl';
 import {
   runOnJS,
   runOnUI,
@@ -27,8 +26,8 @@ import {
   useMedia,
   useScrollContentTabBarOffset,
 } from '@onekeyhq/components';
-import { ANIMATE_ONLY_OPACITY_TRANSFORM } from '@onekeyhq/components/src/utils/animationConstants';
 import { useTabsContext } from '@onekeyhq/components/src/composite/Tabs/context';
+import { ANIMATE_ONLY_OPACITY_TRANSFORM } from '@onekeyhq/components/src/utils/animationConstants';
 import { useSettingsPersistAtom } from '@onekeyhq/kit-bg/src/states/jotai/atoms';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
 import platformEnv from '@onekeyhq/shared/src/platformEnv';
@@ -36,7 +35,6 @@ import defiUtils from '@onekeyhq/shared/src/utils/defiUtils';
 import type { IDeFiProtocol } from '@onekeyhq/shared/types/defi';
 
 import { BackToTopButton } from '../../../components/BackToTopButton';
-import { useAccountDeFiOverviewAtom } from '../../../states/jotai/contexts/accountOverview';
 import { useActiveAccount } from '../../../states/jotai/contexts/accountSelector';
 import {
   ProviderJotaiContextDeFiList,
@@ -48,13 +46,14 @@ import { ProviderJotaiContextHistoryList } from '../../../states/jotai/contexts/
 import { buildProtocolDisplayInfo } from '../../../utils/defiPositionUtils';
 import useActiveTabDAppInfo from '../../DAppConnection/hooks/useActiveTabDAppInfo';
 import {
-  DeFiHeroTotal,
   DeFiListBlock,
   DeFiOverviewCard,
+  DeFiPortfolioCard,
   DeFiStickyPortal,
   type IProtocolHandle,
   PinnedProtocolHeader,
 } from '../components/DeFiListBlock';
+import { buildPortfolioStats } from '../components/DeFiListBlock/DeFiPortfolioStats';
 import { HomeStickyHeaderContext } from '../components/HomeStickyHeaderContext';
 import { HomeTokenListProviderMirrorWrapper } from '../components/HomeTokenListProvider';
 import { PullToRefresh, onHomePageRefresh } from '../components/PullToRefresh';
@@ -65,6 +64,7 @@ import {
   PORTFOLIO_CONTAINER_RIGHT_SIDE_FIXED_WIDTH,
   STICKY_TOP_OFFSET,
 } from '../types';
+
 import {
   findPinnedProtocolKey,
   findScrollableAncestorFromLocalNode,
@@ -116,10 +116,7 @@ function DeFiContainer() {
   const [{ protocols }] = useDeFiListProtocolsAtom();
   const [{ protocolMap }] = useDeFiListProtocolMapAtom();
   const [{ isRefreshing, initialized }] = useDeFiListStateAtom();
-  const [overview] = useAccountDeFiOverviewAtom();
   const isOverviewLoading = !initialized && isRefreshing;
-  const heroTotal = overview.netWorth ?? 0;
-
 
   const triggerPinCheckRef = useRef<() => void>(() => {});
   const scrollContainerRef = useRef<HTMLElement | null>(null);
@@ -156,6 +153,16 @@ function DeFiContainer() {
       return nw.isFinite() ? nw.toNumber() : 0;
     },
     [protocolMap],
+  );
+
+  const portfolioStats = useMemo(
+    () =>
+      buildPortfolioStats({
+        protocols,
+        protocolMap,
+        getNetWorth,
+      }),
+    [protocols, protocolMap, getNetWorth],
   );
 
   const intl = useIntl();
@@ -474,19 +481,27 @@ function DeFiContainer() {
         <XStack gap="$6">
           <YStack flex={1} gap="$8" pt="$3" pb="$8">
             {shouldShowOverview ? (
-              <YStack gap="$4" px="$pagePadding" userSelect="none">
-                <DeFiHeroTotal
-                  total={heroTotal}
+              <XStack
+                gap="$6"
+                px="$pagePadding"
+                userSelect="none"
+                alignItems="flex-start"
+              >
+                <DeFiPortfolioCard
+                  stats={portfolioStats}
                   isLoading={isOverviewLoading}
                 />
-                <DeFiOverviewCard
-                  protocols={protocols}
-                  protocolMap={protocolMap}
-                  isLoading={isOverviewLoading}
-                  getNetWorth={getNetWorth}
-                  onPressProtocol={handleTilePress}
-                />
-              </YStack>
+                <Stack flex={1}>
+                  <DeFiOverviewCard
+                    stats={portfolioStats}
+                    protocols={protocols}
+                    protocolMap={protocolMap}
+                    isLoading={isOverviewLoading}
+                    getNetWorth={getNetWorth}
+                    onPressProtocol={handleTilePress}
+                  />
+                </Stack>
+              </XStack>
             ) : null}
             <DeFiListBlock
               tableLayout
@@ -688,10 +703,7 @@ function DeFiContainerScrollableWeb() {
         />
         <DeFiContainer />
       </Tabs.ScrollView>
-      <BackToTopButton
-        visible={backToTopVisible}
-        onPress={onPressBackToTop}
-      />
+      <BackToTopButton visible={backToTopVisible} onPress={onPressBackToTop} />
     </Stack>
   );
 }
