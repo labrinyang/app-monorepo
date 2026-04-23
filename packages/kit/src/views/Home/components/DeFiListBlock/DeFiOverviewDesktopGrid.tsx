@@ -4,10 +4,10 @@ import type {
   IProtocolSummary,
 } from '@onekeyhq/shared/types/defi';
 
-import type { IDeFiOverviewRenderCell } from './DeFiOverviewPlanner';
 import { DeFiOverviewLessTile } from './DeFiOverviewLessTile';
 import { DeFiOverviewMoreTile } from './DeFiOverviewMoreTile';
 import { DeFiOverviewTile } from './DeFiOverviewTile';
+import type { IDeFiOverviewRenderCell } from './DeFiOverviewPlanner';
 
 export type IDeFiOverviewDesktopGridProps = {
   cells: IDeFiOverviewRenderCell[];
@@ -33,6 +33,7 @@ function DeFiOverviewDesktopGrid({
               protocol={cell.protocol}
               protocolInfo={cell.protocolInfo}
               netWorth={cell.netWorth}
+              percent={cell.percent}
               onPress={() => onPressProtocol(cell.protocol)}
             />
           ) : null}
