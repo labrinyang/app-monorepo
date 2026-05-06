@@ -1,19 +1,10 @@
 import { memo, useMemo } from 'react';
 
-import { useIntl } from 'react-intl';
-
-import {
-  SizableText,
-  Skeleton,
-  XStack,
-  YStack,
-  useMedia,
-} from '@onekeyhq/components';
+import { YStack, useMedia } from '@onekeyhq/components';
 import {
   useSettingsPersistAtom,
   useSettingsValuePersistAtom,
 } from '@onekeyhq/kit-bg/src/states/jotai/atoms';
-import { ETranslations } from '@onekeyhq/shared/src/locale';
 import type {
   IDeFiProtocol,
   IProtocolSummary,
@@ -45,7 +36,6 @@ function DeFiAllocationCard({
   getNetWorth,
   onPressProtocol,
 }: IDeFiAllocationCardProps) {
-  const intl = useIntl();
   const [settings] = useSettingsPersistAtom();
   const [settingsValue] = useSettingsValuePersistAtom();
   const media = useMedia();
@@ -60,43 +50,23 @@ function DeFiAllocationCard({
     [media.gtXl, media.gtLg, media.gtMd],
   );
 
-  const protocolCount = protocols?.length ?? 0;
-
   return (
     <YStack bg="$bgSubdued" borderRadius="$3" p="$5" gap="$6" userSelect="none">
-      {/* Group A — overview: title + count, stacked bar, inline legend */}
-      <YStack gap="$4">
-        <XStack justifyContent="space-between" alignItems="center">
-          <SizableText size="$headingLg" role="heading" aria-level={3}>
-            {intl.formatMessage({ id: ETranslations.defi_allocation })}
-          </SizableText>
-          {isLoading ? (
-            <Skeleton width={88} height={16} borderRadius="$1" />
-          ) : (
-            <SizableText size="$bodyMd" color="$textSubdued">
-              {intl.formatMessage(
-                { id: ETranslations.defi_n_protocols },
-                { count: protocolCount },
-              )}
-            </SizableText>
-          )}
-        </XStack>
-
-        <YStack gap="$3">
-          <DeFiPortfolioStackedBar
-            slices={stats.slices}
-            currencySymbol={settings.currencyInfo.symbol}
-            hideValue={settingsValue.hideValue}
-            isLoading={isLoading}
-          />
-          <DeFiPortfolioInlineLegend
-            slices={stats.slices}
-            isLoading={isLoading}
-          />
-        </YStack>
+      {/* Allocation overview: stacked bar + inline legend */}
+      <YStack gap="$3">
+        <DeFiPortfolioStackedBar
+          slices={stats.slices}
+          currencySymbol={settings.currencyInfo.symbol}
+          hideValue={settingsValue.hideValue}
+          isLoading={isLoading}
+        />
+        <DeFiPortfolioInlineLegend
+          slices={stats.slices}
+          isLoading={isLoading}
+        />
       </YStack>
 
-      {/* Group B — per-protocol breakdown */}
+      {/* Per-protocol breakdown */}
       <DeFiOverviewGrid
         cols={cols}
         protocols={protocols}
