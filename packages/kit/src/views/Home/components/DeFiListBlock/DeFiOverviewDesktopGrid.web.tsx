@@ -72,4 +72,3 @@ function DeFiOverviewDesktopGrid({
 DeFiOverviewDesktopGrid.displayName = 'DeFiOverviewDesktopGrid';
 
 export { DeFiOverviewDesktopGrid };
-export { OVERVIEW_GRID_STYLE } from './DeFiOverviewLayout';

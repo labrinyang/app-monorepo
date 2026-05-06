@@ -15,7 +15,7 @@ export type IProtocolRowProps = {
   protocol: IDeFiProtocol;
   protocolInfo?: IProtocolSummary;
   /**
-   * compact renders the grid-cell variant used by DeFiOverviewCard
+   * compact renders the grid-cell variant used by DeFiOverviewGrid
    * (24pt logo, $bodyMd name, $bodyMdMedium value).
    * Default is the list-row variant used by ProtocolListLayout.
    */

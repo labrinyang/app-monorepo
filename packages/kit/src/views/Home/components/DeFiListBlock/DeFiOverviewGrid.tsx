@@ -90,9 +90,8 @@ function DeFiOverviewGrid({
   if (isLoading) {
     const skeletonCount = getOverviewCellsLimit(cols);
     // Tamagui's $gtMd prop is typed against StackStyle (which doesn't allow
-    // `display: 'grid'`). Cast through `unknown` to preserve the same escape
-    // hatch the deprecated `OVERVIEW_GRID_STYLE` constant uses; this matches
-    // the call-site pattern in `DeFiOverviewCard`.
+    // `display: 'grid'`). Cast through `unknown` so we can pass a CSS-grid
+    // template object without spreading `any` into the call site.
     const gridStyle = buildOverviewGridStyle(cols) as unknown as Record<
       string,
       unknown
