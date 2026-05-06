@@ -138,11 +138,7 @@ function DeFiOverviewGrid({
               flex={1}
               style={SKELETON_SIZE_TO_GRID_STYLE[shape]}
             >
-              <Skeleton
-                height={skeletonHeight}
-                borderRadius="$3"
-                flex={1}
-              />
+              <Skeleton height={skeletonHeight} borderRadius="$3" flex={1} />
             </XStack>
           );
         })}

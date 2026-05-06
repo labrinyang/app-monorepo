@@ -17,12 +17,7 @@ export const OVERVIEW_MORE_PREVIEW_COUNT = 3;
  * 'hero' (2x2), a small group gets 'medium' (2x1), the rest get 'small'
  * (1x1). The 'more'/'less' sizes are reserved for the toggle cells.
  */
-export type IDeFiOverviewSize =
-  | 'hero'
-  | 'medium'
-  | 'small'
-  | 'more'
-  | 'less';
+export type IDeFiOverviewSize = 'hero' | 'medium' | 'small' | 'more' | 'less';
 
 /**
  * Number of protocols rendered as 2x1 medium tiles right after the hero.

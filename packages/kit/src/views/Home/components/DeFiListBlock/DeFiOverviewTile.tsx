@@ -1,4 +1,5 @@
 import { useIntl } from 'react-intl';
+import { StyleSheet } from 'react-native';
 
 import { SizableText, Stack, XStack, YStack } from '@onekeyhq/components';
 import { Token } from '@onekeyhq/kit/src/components/Token';
@@ -12,6 +13,7 @@ import type {
   IProtocolSummary,
 } from '@onekeyhq/shared/types/defi';
 
+import { OVERVIEW_TILE_SHADOW } from './DeFiOverviewLayout';
 import { formatPortfolioPercent } from './formatPortfolioPercent';
 import { formatPortfolioTotal } from './formatPortfolioTotal';
 
@@ -29,12 +31,29 @@ export type IDeFiOverviewTileProps = {
   onPress: () => void;
 };
 
+// Shared tile shell. Web uses the OneKey ProtocolRow / RichBlock card
+// elevation (triple-layered boxShadow); native uses a hairline border to
+// keep tile edges visible on a system that doesn't honor boxShadow.
+// Focus + animation are constants here so all three internal layouts
+// (hero / medium / small) read identically as keyboard-focusable buttons.
 const SHELL_BASE = {
   bg: '$bgSubdued',
   borderRadius: '$3',
+  cursor: 'pointer',
+  animation: 'quick',
+  focusable: true,
+  focusVisibleStyle: {
+    outlineColor: '$focusRing',
+    outlineStyle: 'solid',
+    outlineWidth: 2,
+  },
   hoverStyle: { bg: '$bgHover' },
   pressStyle: { bg: '$bgActive' },
-  cursor: 'pointer',
+  '$platform-web': { boxShadow: OVERVIEW_TILE_SHADOW },
+  '$platform-native': {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '$borderSubdued',
+  },
 } as const;
 
 function DeFiOverviewTile({
@@ -83,8 +102,8 @@ function DeFiOverviewTile({
       >
         <XStack alignItems="center" gap="$3">
           <Stack
-            width={36}
-            height={36}
+            width={48}
+            height={48}
             flexShrink={0}
             alignItems="center"
             justifyContent="center"
@@ -92,15 +111,14 @@ function DeFiOverviewTile({
             bg="$bgApp"
           >
             <Token
-              size="md"
+              size="lg"
               tokenImageUri={logo}
               networkId={protocol.networkId}
               showNetworkIcon={Boolean(isAllNetworks && protocol.networkId)}
             />
           </Stack>
           <SizableText
-            size="$bodyMd"
-            color="$textSubdued"
+            size="$bodyMdMedium"
             numberOfLines={1}
             ellipsizeMode="tail"
             flex={1}

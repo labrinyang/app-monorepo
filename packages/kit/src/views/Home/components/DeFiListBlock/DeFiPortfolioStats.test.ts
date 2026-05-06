@@ -29,11 +29,7 @@ describe('buildPortfolioStats', () => {
   });
 
   it('sums netWorths across all protocols', () => {
-    const protocols = [
-      makeProtocol('a'),
-      makeProtocol('b'),
-      makeProtocol('c'),
-    ];
+    const protocols = [makeProtocol('a'), makeProtocol('b'), makeProtocol('c')];
     const values: Record<string, number> = { a: 50, b: 30, c: 20 };
     expect(
       buildPortfolioStats({

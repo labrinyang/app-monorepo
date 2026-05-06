@@ -47,9 +47,16 @@ function DeFiOverviewMoreTile({
       alignItems="center"
       justifyContent="space-between"
       gap="$3"
+      cursor="pointer"
+      animation="quick"
+      focusable
+      focusVisibleStyle={{
+        outlineColor: '$focusRing',
+        outlineStyle: 'solid',
+        outlineWidth: 2,
+      }}
       hoverStyle={{ bg: '$bgHover' }}
       pressStyle={{ bg: '$bgActive' }}
-      cursor="pointer"
       onPress={onPress}
       role="button"
       aria-label={`${viewMoreLabel} (+${extraCount})`}
