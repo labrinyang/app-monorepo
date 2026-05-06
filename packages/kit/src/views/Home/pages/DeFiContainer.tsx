@@ -513,7 +513,7 @@ function DeFiContainer() {
   if (tableLayout) {
     return (
       <>
-        <YStack pt="$3" gap="$8" pb="$8">
+        <YStack pt="$4" gap="$8" pb="$8">
           <RichBlock
             withTitleSeparator
             title={intl.formatMessage({

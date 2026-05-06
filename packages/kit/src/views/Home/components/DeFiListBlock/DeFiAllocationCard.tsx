@@ -63,36 +63,40 @@ function DeFiAllocationCard({
   const protocolCount = protocols?.length ?? 0;
 
   return (
-    <YStack bg="$bgSubdued" borderRadius="$3" p="$5" gap="$5" userSelect="none">
-      <XStack justifyContent="space-between" alignItems="center">
-        <SizableText size="$headingLg" role="heading" aria-level={3}>
-          {intl.formatMessage({ id: ETranslations.defi_allocation })}
-        </SizableText>
-        {isLoading ? (
-          <Skeleton width={88} height={16} borderRadius="$1" />
-        ) : (
-          <SizableText size="$bodyMd" color="$textSubdued">
-            {intl.formatMessage(
-              { id: ETranslations.defi_n_protocols },
-              { count: protocolCount },
-            )}
+    <YStack bg="$bgSubdued" borderRadius="$3" p="$5" gap="$6" userSelect="none">
+      {/* Group A — overview: title + count, stacked bar, inline legend */}
+      <YStack gap="$4">
+        <XStack justifyContent="space-between" alignItems="center">
+          <SizableText size="$headingLg" role="heading" aria-level={3}>
+            {intl.formatMessage({ id: ETranslations.defi_allocation })}
           </SizableText>
-        )}
-      </XStack>
+          {isLoading ? (
+            <Skeleton width={88} height={16} borderRadius="$1" />
+          ) : (
+            <SizableText size="$bodyMd" color="$textSubdued">
+              {intl.formatMessage(
+                { id: ETranslations.defi_n_protocols },
+                { count: protocolCount },
+              )}
+            </SizableText>
+          )}
+        </XStack>
 
-      <YStack gap="$3">
-        <DeFiPortfolioStackedBar
-          slices={stats.slices}
-          currencySymbol={settings.currencyInfo.symbol}
-          hideValue={settingsValue.hideValue}
-          isLoading={isLoading}
-        />
-        <DeFiPortfolioInlineLegend
-          slices={stats.slices}
-          isLoading={isLoading}
-        />
+        <YStack gap="$3">
+          <DeFiPortfolioStackedBar
+            slices={stats.slices}
+            currencySymbol={settings.currencyInfo.symbol}
+            hideValue={settingsValue.hideValue}
+            isLoading={isLoading}
+          />
+          <DeFiPortfolioInlineLegend
+            slices={stats.slices}
+            isLoading={isLoading}
+          />
+        </YStack>
       </YStack>
 
+      {/* Group B — per-protocol breakdown */}
       <DeFiOverviewGrid
         cols={cols}
         protocols={protocols}
