@@ -1,3 +1,4 @@
+export { DeFiAllocationCard } from './DeFiAllocationCard';
 export { DeFiListBlock } from './DeFiListBlock';
 export { DeFiOverviewCard } from './DeFiOverviewCard';
 export { DeFiOverviewGrid } from './DeFiOverviewGrid';
