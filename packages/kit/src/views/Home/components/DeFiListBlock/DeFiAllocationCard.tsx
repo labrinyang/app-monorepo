@@ -38,8 +38,12 @@ function DeFiAllocationCard({
     [media.gtXl, media.gtLg, media.gtMd],
   );
 
+  // No outer card chrome: each tile is a $bgSubdued card sitting on the
+  // page's $bgApp directly, matching the rest of the OneKey "card row"
+  // pattern (see ProtocolRow). Wrapping the tiles inside another
+  // $bgSubdued container nests cards-inside-card and erases tile edges.
   return (
-    <YStack bg="$bgSubdued" borderRadius="$3" p="$5" userSelect="none">
+    <YStack userSelect="none">
       <DeFiOverviewGrid
         cols={cols}
         protocols={protocols}
