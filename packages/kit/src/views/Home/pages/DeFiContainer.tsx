@@ -513,85 +513,87 @@ function DeFiContainer() {
   if (tableLayout) {
     return (
       <>
-        <XStack gap="$6" pt="$3">
-          <YStack flex={1} gap="$8" pb="$8">
-            <RichBlock
-              withTitleSeparator
-              title={intl.formatMessage({
-                id: ETranslations.earn_portfolio_title,
-              })}
-              subTitle={
-                isOverviewLoading ? (
-                  <Skeleton width={120} height={20} borderRadius="$1" />
-                ) : (
-                  <NumberSizeableTextWrapper
-                    hideValue
-                    size="$headingXl"
-                    color="$textSubdued"
-                    formatter="value"
-                    formatterOptions={{ currency: currencySymbol }}
-                  >
-                    {String(portfolioStats.total)}
-                  </NumberSizeableTextWrapper>
-                )
-              }
-              headerContainerProps={{ px: '$pagePadding' }}
-              content={null}
-              plainContentContainer
-            />
-            {shouldShowOverview ? (
-              <YStack px="$pagePadding">
-                <DeFiAllocationCard
-                  stats={portfolioStats}
-                  protocols={protocols}
-                  protocolMap={protocolMap}
-                  isLoading={isOverviewLoading}
-                  getNetWorth={getNetWorth}
-                  onPressProtocol={handleTilePress}
-                  isAllNetworks={isAllNetworks}
-                />
-              </YStack>
-            ) : null}
-            <DeFiListBlock
-              tableLayout
-              hideInternalTitle
-              registerProtocol={registerProtocol}
-            />
-            <Upgrade />
-            <SupportHub />
-          </YStack>
-          {showRecentHistory ? (
-            <YStack
-              ref={(node) => {
-                sidebarRef.current = node as unknown as HTMLElement | null;
-              }}
-              width={PORTFOLIO_CONTAINER_RIGHT_SIDE_FIXED_WIDTH}
-              flexShrink={0}
-              height={isSidebarPinned ? sidebarShellHeight : undefined}
-            >
-              <YStack
-                ref={(node) => {
-                  sidebarContentRef.current =
-                    node as unknown as HTMLElement | null;
-                }}
-                width={PORTFOLIO_CONTAINER_RIGHT_SIDE_FIXED_WIDTH}
-                {...(isSidebarPinned
-                  ? {
-                      position: 'fixed' as any,
-                      top: sidebarStickyTop,
-                      left: sidebarFixedLeft,
-                      maxHeight: stickySidebarMaxHeight,
-                      overflow: 'scroll' as any,
-                      zIndex: 1,
-                    }
-                  : null)}
-              >
-                <RecentHistory hideTitle={isSidebarPinned} />
-              </YStack>
+        <YStack pt="$3" gap="$8" pb="$8">
+          <RichBlock
+            withTitleSeparator
+            title={intl.formatMessage({
+              id: ETranslations.earn_portfolio_title,
+            })}
+            subTitle={
+              isOverviewLoading ? (
+                <Skeleton width={120} height={20} borderRadius="$1" />
+              ) : (
+                <NumberSizeableTextWrapper
+                  hideValue
+                  size="$headingXl"
+                  color="$textSubdued"
+                  formatter="value"
+                  formatterOptions={{ currency: currencySymbol }}
+                >
+                  {String(portfolioStats.total)}
+                </NumberSizeableTextWrapper>
+              )
+            }
+            headerContainerProps={{ px: '$pagePadding' }}
+            content={null}
+            plainContentContainer
+          />
+          {shouldShowOverview ? (
+            <YStack px="$pagePadding">
+              <DeFiAllocationCard
+                stats={portfolioStats}
+                protocols={protocols}
+                protocolMap={protocolMap}
+                isLoading={isOverviewLoading}
+                getNetWorth={getNetWorth}
+                onPressProtocol={handleTilePress}
+                isAllNetworks={isAllNetworks}
+              />
             </YStack>
           ) : null}
+          <XStack gap="$6">
+            <YStack flex={1} gap="$8">
+              <DeFiListBlock
+                tableLayout
+                hideInternalTitle
+                registerProtocol={registerProtocol}
+              />
+              <Upgrade />
+              <SupportHub />
+            </YStack>
+            {showRecentHistory ? (
+              <YStack
+                ref={(node) => {
+                  sidebarRef.current = node as unknown as HTMLElement | null;
+                }}
+                width={PORTFOLIO_CONTAINER_RIGHT_SIDE_FIXED_WIDTH}
+                flexShrink={0}
+                height={isSidebarPinned ? sidebarShellHeight : undefined}
+              >
+                <YStack
+                  ref={(node) => {
+                    sidebarContentRef.current =
+                      node as unknown as HTMLElement | null;
+                  }}
+                  width={PORTFOLIO_CONTAINER_RIGHT_SIDE_FIXED_WIDTH}
+                  {...(isSidebarPinned
+                    ? {
+                        position: 'fixed' as any,
+                        top: sidebarStickyTop,
+                        left: sidebarFixedLeft,
+                        maxHeight: stickySidebarMaxHeight,
+                        overflow: 'scroll' as any,
+                        zIndex: 1,
+                      }
+                    : null)}
+                >
+                  <RecentHistory hideTitle={isSidebarPinned} />
+                </YStack>
+              </YStack>
+            ) : null}
+          </XStack>
           {addPaddingOnListFooter ? <Stack h="$16" /> : null}
-        </XStack>
+        </YStack>
         {portalTarget && isTabFocused && hasStickyOverlay ? (
           <DeFiStickyPortal target={portalTarget}>
             {/* Pull up by Tabs.TabBar's own py="$2" bottom padding so the
