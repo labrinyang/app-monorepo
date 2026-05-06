@@ -513,7 +513,7 @@ function DeFiContainer() {
   if (tableLayout) {
     return (
       <>
-        <YStack pt="$4" gap="$8" pb="$8">
+        <YStack pt="$4" pb="$8">
           <RichBlock
             withTitleSeparator
             title={intl.formatMessage({
@@ -534,12 +534,15 @@ function DeFiContainer() {
                 </NumberSizeableTextWrapper>
               )
             }
-            headerContainerProps={{ px: '$pagePadding' }}
+            // pb=0 cancels RichBlockHeader's own py="$3" bottom padding so the
+            // gap to the next block reads as the explicit mt below, not the
+            // header's internal padding stacked on top of it.
+            headerContainerProps={{ px: '$pagePadding', pb: 0 }}
             content={null}
             plainContentContainer
           />
           {shouldShowOverview ? (
-            <YStack px="$pagePadding">
+            <YStack px="$pagePadding" mt="$5">
               <DeFiAllocationCard
                 stats={portfolioStats}
                 protocols={protocols}
@@ -551,7 +554,7 @@ function DeFiContainer() {
               />
             </YStack>
           ) : null}
-          <XStack gap="$6">
+          <XStack mt="$8" gap="$6">
             <YStack flex={1} gap="$8">
               <DeFiListBlock
                 tableLayout
