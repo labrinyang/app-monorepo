@@ -48,7 +48,6 @@ function DeFiOverviewMoreTile({
       justifyContent="space-between"
       gap="$3"
       cursor="pointer"
-      animation="quick"
       focusable
       focusVisibleStyle={{
         outlineColor: '$focusRing',

@@ -34,13 +34,13 @@ export type IDeFiOverviewTileProps = {
 // Shared tile shell. Web uses the OneKey ProtocolRow / RichBlock card
 // elevation (triple-layered boxShadow); native uses a hairline border to
 // keep tile edges visible on a system that doesn't honor boxShadow.
-// Focus + animation are constants here so all three internal layouts
-// (hero / medium / small) read identically as keyboard-focusable buttons.
+// Hover/press are intentionally instant: this is a dense data surface
+// where snappy feedback beats smooth transitions for perceived
+// responsiveness.
 const SHELL_BASE = {
   bg: '$bgSubdued',
   borderRadius: '$3',
   cursor: 'pointer',
-  animation: 'quick',
   focusable: true,
   focusVisibleStyle: {
     outlineColor: '$focusRing',

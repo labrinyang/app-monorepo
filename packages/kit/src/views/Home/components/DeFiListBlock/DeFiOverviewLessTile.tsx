@@ -31,7 +31,6 @@ function DeFiOverviewLessTile({ onPress }: IDeFiOverviewLessTileProps) {
       alignItems="center"
       gap="$3"
       cursor="pointer"
-      animation="quick"
       focusable
       focusVisibleStyle={{
         outlineColor: '$focusRing',
