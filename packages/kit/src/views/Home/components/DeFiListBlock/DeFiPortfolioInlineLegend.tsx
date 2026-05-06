@@ -47,12 +47,7 @@ function DeFiPortfolioInlineLegend({
           bg="$bgStrong"
           borderRadius="$2"
         >
-          <Stack
-            width={8}
-            height={8}
-            borderRadius="$full"
-            bg={s.colorToken}
-          />
+          <Stack width={8} height={8} borderRadius="$full" bg={s.colorToken} />
           <SizableText size="$bodyMd">{s.label}</SizableText>
           <SizableText size="$bodyMd" color="$textSubdued">
             {formatPortfolioPercent(s.percent)}

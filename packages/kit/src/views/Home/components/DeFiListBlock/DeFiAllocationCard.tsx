@@ -63,13 +63,7 @@ function DeFiAllocationCard({
   const protocolCount = protocols?.length ?? 0;
 
   return (
-    <YStack
-      bg="$bgSubdued"
-      borderRadius="$3"
-      p="$5"
-      gap="$5"
-      userSelect="none"
-    >
+    <YStack bg="$bgSubdued" borderRadius="$3" p="$5" gap="$5" userSelect="none">
       <XStack justifyContent="space-between" alignItems="center">
         <SizableText size="$headingLg" role="heading" aria-level={3}>
           {intl.formatMessage({ id: ETranslations.defi_allocation })}
@@ -93,7 +87,10 @@ function DeFiAllocationCard({
           hideValue={settingsValue.hideValue}
           isLoading={isLoading}
         />
-        <DeFiPortfolioInlineLegend slices={stats.slices} isLoading={isLoading} />
+        <DeFiPortfolioInlineLegend
+          slices={stats.slices}
+          isLoading={isLoading}
+        />
       </YStack>
 
       <DeFiOverviewGrid

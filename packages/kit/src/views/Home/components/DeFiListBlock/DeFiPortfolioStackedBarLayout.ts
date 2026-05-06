@@ -1,9 +1,9 @@
 import type { IPortfolioSlice } from './DeFiPortfolioStats';
 
 /**
- * Below this percent the segment colour band still renders but the
+ * Below this percent the segment color band still renders but the
  * "XX%" text is suppressed — at < 6% width the label cannot fit
- * inside the segment without bleeding into its neighbours.
+ * inside the segment without bleeding into its neighbors.
  */
 export const MIN_LABEL_PERCENT = 6;
 

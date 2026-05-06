@@ -24,10 +24,7 @@ describe('buildStackedBarSegments', () => {
   });
 
   it('uses the slice percent verbatim for flexBasis', () => {
-    const out = buildStackedBarSegments([
-      slice('a', 60),
-      slice('b', 40),
-    ]);
+    const out = buildStackedBarSegments([slice('a', 60), slice('b', 40)]);
     expect(out).toHaveLength(2);
     expect(out[0]).toMatchObject({ key: 'a', flexBasis: 60 });
     expect(out[1]).toMatchObject({ key: 'b', flexBasis: 40 });
@@ -40,13 +37,10 @@ describe('buildStackedBarSegments', () => {
   });
 
   it('hides the label when the slice is below MIN_LABEL_PERCENT', () => {
-    const out = buildStackedBarSegments([
-      slice('big', 95),
-      slice('tiny', 5),
-    ]);
+    const out = buildStackedBarSegments([slice('big', 95), slice('tiny', 5)]);
     const tiny = out.find((s) => s.key === 'tiny');
     expect(tiny?.showLabel).toBe(false);
-    // colour band still renders — flexBasis is preserved
+    // color band still renders — flexBasis is preserved
     expect(tiny?.flexBasis).toBe(5);
   });
 
