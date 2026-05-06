@@ -9,19 +9,11 @@ import { DeFiOverviewLessTile } from './DeFiOverviewLessTile';
 import { DeFiOverviewMoreTile } from './DeFiOverviewMoreTile';
 import { DeFiOverviewTile } from './DeFiOverviewTile';
 
-import type {
-  IDeFiOverviewRenderCell,
-  IDeFiOverviewSize,
-} from './DeFiOverviewPlanner';
+import type { IDeFiOverviewRenderCell } from './DeFiOverviewPlanner';
 import type { IOverviewCols } from './overviewColsResolver';
 
-const SIZE_TO_GRID_STYLE: Record<IDeFiOverviewSize, React.CSSProperties> = {
-  hero: { gridColumnEnd: 'span 2', gridRowEnd: 'span 2' },
-  medium: { gridColumnEnd: 'span 2', gridRowEnd: 'span 1' },
-  small: { gridColumnEnd: 'span 1', gridRowEnd: 'span 1' },
-  more: { gridColumnEnd: 'span 2', gridRowEnd: 'span 1' },
-  less: { gridColumnEnd: 'span 1', gridRowEnd: 'span 1' },
-};
+const SPAN_1: React.CSSProperties = { gridColumnEnd: 'span 1' };
+const SPAN_2: React.CSSProperties = { gridColumnEnd: 'span 2' };
 
 export type IDeFiOverviewDesktopGridProps = {
   cells: IDeFiOverviewRenderCell[];
@@ -48,11 +40,10 @@ function DeFiOverviewDesktopGrid({
         <XStack
           key={cell.key}
           minWidth={0}
-          style={SIZE_TO_GRID_STYLE[cell.size]}
+          style={cell.span === 2 ? SPAN_2 : SPAN_1}
         >
           {cell.kind === 'protocol' ? (
             <DeFiOverviewTile
-              size={cell.size}
               protocol={cell.protocol}
               protocolInfo={cell.protocolInfo}
               netWorth={cell.netWorth}

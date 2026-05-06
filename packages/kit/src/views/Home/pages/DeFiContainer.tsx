@@ -194,9 +194,10 @@ function DeFiContainer() {
     () =>
       buildPortfolioStats({
         protocols,
+        protocolMap,
         getNetWorth,
       }),
-    [protocols, getNetWorth],
+    [protocols, protocolMap, getNetWorth],
   );
 
   const stickyHeaderCtx = useContext(HomeStickyHeaderContext);
@@ -543,6 +544,7 @@ function DeFiContainer() {
           {shouldShowOverview ? (
             <YStack px="$pagePadding" mt="$5">
               <DeFiAllocationCard
+                stats={portfolioStats}
                 protocols={protocols}
                 protocolMap={protocolMap}
                 isLoading={isOverviewLoading}

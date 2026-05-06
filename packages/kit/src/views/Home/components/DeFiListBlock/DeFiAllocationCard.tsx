@@ -1,15 +1,23 @@
 import { memo, useMemo } from 'react';
 
 import { YStack, useMedia } from '@onekeyhq/components';
+import {
+  useSettingsPersistAtom,
+  useSettingsValuePersistAtom,
+} from '@onekeyhq/kit-bg/src/states/jotai/atoms';
 import type {
   IDeFiProtocol,
   IProtocolSummary,
 } from '@onekeyhq/shared/types/defi';
 
 import { DeFiOverviewGrid } from './DeFiOverviewGrid';
+import { DeFiPortfolioStackedBar } from './DeFiPortfolioStackedBar';
 import { resolveOverviewCols } from './overviewColsResolver';
 
+import type { IPortfolioStats } from './DeFiPortfolioStats';
+
 export type IDeFiAllocationCardProps = {
+  stats: IPortfolioStats;
   protocols: IDeFiProtocol[] | undefined;
   protocolMap: Record<string, IProtocolSummary>;
   isLoading?: boolean;
@@ -19,6 +27,7 @@ export type IDeFiAllocationCardProps = {
 };
 
 function DeFiAllocationCard({
+  stats,
   protocols,
   protocolMap,
   isLoading,
@@ -26,6 +35,8 @@ function DeFiAllocationCard({
   getNetWorth,
   onPressProtocol,
 }: IDeFiAllocationCardProps) {
+  const [settings] = useSettingsPersistAtom();
+  const [settingsValue] = useSettingsValuePersistAtom();
   const media = useMedia();
 
   const cols = useMemo(
@@ -39,11 +50,17 @@ function DeFiAllocationCard({
   );
 
   // No outer card chrome: each tile is a $bgSubdued card sitting on the
-  // page's $bgApp directly, matching the rest of the OneKey "card row"
-  // pattern (see ProtocolRow). Wrapping the tiles inside another
-  // $bgSubdued container nests cards-inside-card and erases tile edges.
+  // page's $bgApp directly, matching the OneKey ProtocolRow pattern.
+  // The stacked bar is its own bare block above the grid; bar segments
+  // and tile cards both read directly on the page bg.
   return (
-    <YStack userSelect="none">
+    <YStack userSelect="none" gap="$5">
+      <DeFiPortfolioStackedBar
+        slices={stats.slices}
+        currencySymbol={settings.currencyInfo.symbol}
+        hideValue={settingsValue.hideValue}
+        isLoading={isLoading}
+      />
       <DeFiOverviewGrid
         cols={cols}
         protocols={protocols}

@@ -21,16 +21,9 @@ export type IDeFiOverviewDesktopGridProps = {
   isAllNetworks?: boolean;
 };
 
-/**
- * Native fallback grid. Bento sizing is web-only (CSS Grid driven); on
- * native platforms we render every protocol tile in the compact `small`
- * layout via flexbox flow. The cell.size from the planner is intentionally
- * ignored here so a hero-style internal layout never collides with a
- * narrow flex={1} row.
- */
 function DeFiOverviewDesktopGrid({
   cells,
-  cols: _cols,
+  cols: _cols, // intentionally unused on native; web variant honours it
   protocolMap,
   onPressProtocol,
   onPressMore,
@@ -43,7 +36,6 @@ function DeFiOverviewDesktopGrid({
         <XStack key={cell.key} minWidth={0} flex={1}>
           {cell.kind === 'protocol' ? (
             <DeFiOverviewTile
-              size="small"
               protocol={cell.protocol}
               protocolInfo={cell.protocolInfo}
               netWorth={cell.netWorth}
