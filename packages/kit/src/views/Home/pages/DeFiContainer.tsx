@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import BigNumber from 'bignumber.js';
+import { useIntl } from 'react-intl';
 import {
   runOnJS,
   runOnUI,
@@ -18,6 +19,7 @@ import {
 } from 'react-native-reanimated';
 
 import {
+  Skeleton,
   Stack,
   Tabs,
   XStack,
@@ -29,6 +31,7 @@ import {
 import { useTabsContext } from '@onekeyhq/components/src/composite/Tabs/context';
 import { ANIMATE_ONLY_OPACITY_TRANSFORM } from '@onekeyhq/components/src/utils/animationConstants';
 import { useSettingsPersistAtom } from '@onekeyhq/kit-bg/src/states/jotai/atoms';
+import { ETranslations } from '@onekeyhq/shared/src/locale';
 import platformEnv from '@onekeyhq/shared/src/platformEnv';
 import defiUtils from '@onekeyhq/shared/src/utils/defiUtils';
 import type { IDeFiProtocol } from '@onekeyhq/shared/types/defi';
@@ -36,6 +39,7 @@ import { EHomeWalletTab } from '@onekeyhq/shared/types/wallet';
 import type { WorkletFn } from '@onekeyhq/shared/types/worklet';
 
 import { BackToTopButton } from '../../../components/BackToTopButton';
+import NumberSizeableTextWrapper from '../../../components/NumberSizeableTextWrapper';
 import { useActiveAccount } from '../../../states/jotai/contexts/accountSelector';
 import {
   ProviderJotaiContextDeFiList,
@@ -47,9 +51,8 @@ import { ProviderJotaiContextHistoryList } from '../../../states/jotai/contexts/
 import { buildProtocolDisplayInfo } from '../../../utils/defiPositionUtils';
 import useActiveTabDAppInfo from '../../DAppConnection/hooks/useActiveTabDAppInfo';
 import {
+  DeFiAllocationCard,
   DeFiListBlock,
-  DeFiOverviewCard,
-  DeFiPortfolioCard,
   DeFiStickyPortal,
   type IProtocolHandle,
   PinnedProtocolHeader,
@@ -59,6 +62,7 @@ import { HomeStickyHeaderContext } from '../components/HomeStickyHeaderContext';
 import { HomeTokenListProviderMirrorWrapper } from '../components/HomeTokenListProvider';
 import { PullToRefresh, onHomePageRefresh } from '../components/PullToRefresh';
 import { RecentHistory, RecentHistoryTitle } from '../components/RecentHistory';
+import { RichBlock } from '../components/RichBlock/RichBlock';
 import { SupportHub } from '../components/SupportHub';
 import { Upgrade } from '../components/Upgrade';
 import {
@@ -125,6 +129,7 @@ function scrollToAnchor(
 function DeFiContainer() {
   const media = useMedia();
   const reducedMotion = useReducedMotion();
+  const intl = useIntl();
 
   const tableLayout = media.gtMd;
   const showRecentHistory = media.gtXl;
@@ -510,14 +515,34 @@ function DeFiContainer() {
       <>
         <XStack gap="$6" pt="$3">
           <YStack flex={1} gap="$8" pb="$8">
+            <RichBlock
+              withTitleSeparator
+              title={intl.formatMessage({
+                id: ETranslations.earn_portfolio_title,
+              })}
+              subTitle={
+                isOverviewLoading ? (
+                  <Skeleton width={120} height={20} borderRadius="$1" />
+                ) : (
+                  <NumberSizeableTextWrapper
+                    hideValue
+                    size="$headingXl"
+                    color="$textSubdued"
+                    formatter="value"
+                    formatterOptions={{ currency: currencySymbol }}
+                  >
+                    {String(portfolioStats.total)}
+                  </NumberSizeableTextWrapper>
+                )
+              }
+              headerContainerProps={{ px: '$pagePadding' }}
+              content={null}
+              plainContentContainer
+            />
             {shouldShowOverview ? (
-              <YStack gap="$6" px="$pagePadding" userSelect="none">
-                <DeFiPortfolioCard
+              <YStack px="$pagePadding">
+                <DeFiAllocationCard
                   stats={portfolioStats}
-                  isLoading={isOverviewLoading}
-                  isAllNetworks={isAllNetworks}
-                />
-                <DeFiOverviewCard
                   protocols={protocols}
                   protocolMap={protocolMap}
                   isLoading={isOverviewLoading}
@@ -529,7 +554,7 @@ function DeFiContainer() {
             ) : null}
             <DeFiListBlock
               tableLayout
-              hideInternalTitle={shouldShowOverview}
+              hideInternalTitle
               registerProtocol={registerProtocol}
             />
             <Upgrade />
