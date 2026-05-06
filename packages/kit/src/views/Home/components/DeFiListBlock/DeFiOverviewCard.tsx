@@ -58,6 +58,7 @@ function DeFiOverviewCard({
         protocolMap,
         isExpanded,
         exposureTotal: overviewExposureTotal,
+        cols: 4,
       }),
     [rankedProtocols, protocolMap, isExpanded, overviewExposureTotal],
   );

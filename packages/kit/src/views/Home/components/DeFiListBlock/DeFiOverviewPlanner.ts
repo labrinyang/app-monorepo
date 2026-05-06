@@ -7,9 +7,24 @@ import type {
 import { roundToOneDecimal } from './DeFiPortfolioStats';
 
 import type { IDeFiOverviewCell } from './hooks/useDeFiOverviewTopN';
+import type { IOverviewCols } from './overviewColsResolver';
 
-export const OVERVIEW_COLLAPSED_PROTOCOL_COUNT = 10;
 export const OVERVIEW_MORE_PREVIEW_COUNT = 3;
+export const OVERVIEW_MORE_CELL_SPAN = 2;
+
+/**
+ * The collapsed-state cap is `3 × cols`, leaving exactly two trailing
+ * cells for the More button (span=2). When the protocol list overflows
+ * that cap the grid renders `(3 × cols − OVERVIEW_MORE_CELL_SPAN)`
+ * protocol tiles + 1 More cell, filling 3 rows cleanly.
+ */
+export function getOverviewCellsLimit(cols: IOverviewCols): number {
+  return 3 * cols;
+}
+
+export function getOverviewVisibleCollapsed(cols: IOverviewCols): number {
+  return getOverviewCellsLimit(cols) - OVERVIEW_MORE_CELL_SPAN;
+}
 
 export type IDeFiOverviewProtocolRenderCell = {
   kind: 'protocol';
@@ -68,16 +83,21 @@ export function buildDeFiOverviewRenderCells({
   protocolMap,
   isExpanded,
   exposureTotal,
+  cols,
 }: {
   rankedProtocols: IDeFiOverviewCell[];
   protocolMap: Record<string, IProtocolSummary>;
   isExpanded: boolean;
   exposureTotal: number;
+  cols: IOverviewCols;
 }): IDeFiOverviewRenderCell[] {
   const toCell = (c: IDeFiOverviewCell) =>
     toProtocolCell(c, protocolMap, exposureTotal);
 
-  if (rankedProtocols.length <= OVERVIEW_COLLAPSED_PROTOCOL_COUNT) {
+  const cellsLimit = getOverviewCellsLimit(cols);
+  const visibleCollapsed = getOverviewVisibleCollapsed(cols);
+
+  if (rankedProtocols.length <= cellsLimit) {
     return rankedProtocols.map(toCell);
   }
 
@@ -88,8 +108,8 @@ export function buildDeFiOverviewRenderCells({
     ];
   }
 
-  const visible = rankedProtocols.slice(0, OVERVIEW_COLLAPSED_PROTOCOL_COUNT);
-  const hidden = rankedProtocols.slice(OVERVIEW_COLLAPSED_PROTOCOL_COUNT);
+  const visible = rankedProtocols.slice(0, visibleCollapsed);
+  const hidden = rankedProtocols.slice(visibleCollapsed);
 
   return [
     ...visible.map(toCell),
