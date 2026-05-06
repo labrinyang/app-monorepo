@@ -19,13 +19,15 @@ function DeFiOverviewLessTile({ onPress }: IDeFiOverviewLessTileProps) {
   return (
     <XStack
       flex={1}
+      height="100%"
+      width="100%"
       bg="$bgApp"
       borderRadius="$3"
       borderWidth={1}
       borderStyle="dashed"
       borderColor="$borderSubdued"
-      px="$4"
-      py="$3.5"
+      px="$3"
+      py="$3"
       alignItems="center"
       gap="$3"
       hoverStyle={{ bg: '$bgHover' }}

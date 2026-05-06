@@ -17,20 +17,32 @@ import { formatPortfolioTotal } from './formatPortfolioTotal';
 
 const TABULAR_NUMS: ['tabular-nums'] = ['tabular-nums'];
 
+export type IDeFiOverviewTileSize = 'hero' | 'medium' | 'small';
+
 export type IDeFiOverviewTileProps = {
   protocol: IDeFiProtocol;
   protocolInfo: IProtocolSummary | undefined;
   netWorth: number | string;
   percent?: number;
+  size?: IDeFiOverviewTileSize;
   isAllNetworks?: boolean;
   onPress: () => void;
 };
+
+const SHELL_BASE = {
+  bg: '$bgSubdued',
+  borderRadius: '$3',
+  hoverStyle: { bg: '$bgHover' },
+  pressStyle: { bg: '$bgActive' },
+  cursor: 'pointer',
+} as const;
 
 function DeFiOverviewTile({
   protocol,
   protocolInfo,
   netWorth,
   percent,
+  size = 'small',
   isAllNetworks,
   onPress,
 }: IDeFiOverviewTileProps) {
@@ -46,37 +58,109 @@ function DeFiOverviewTile({
     currencySymbol,
     settingsValue.hideValue,
   );
+  const formattedPercent =
+    typeof percent === 'number'
+      ? formatPortfolioPercent(percent, netWorth)
+      : null;
 
-  return (
-    <XStack
-      flex={1}
-      bg="$bgSubdued"
-      borderRadius="$3"
-      px="$4"
-      py="$3.5"
-      alignItems="center"
-      gap="$3"
-      hoverStyle={{ bg: '$bgHover' }}
-      pressStyle={{ bg: '$bgActive' }}
-      cursor="pointer"
-      onPress={onPress}
-      role="button"
-      aria-label={`${name}. ${detailsLabel}`}
-    >
-      <Stack
-        width={36}
-        height={36}
-        flexShrink={0}
+  if (size === 'hero') {
+    // Hero (2x2): logo + name as a quiet kicker on top, amount as the
+    // typographic moment on bottom-left, pct subdued on bottom-right.
+    // Amount jumps to $heading3xl (28) — a 1.55x ratio over medium and
+    // 2.0x over small, well above the design system's 1.25 minimum.
+    return (
+      <YStack
+        {...SHELL_BASE}
+        flex={1}
+        height="100%"
+        width="100%"
+        p="$5"
+        justifyContent="space-between"
+        gap="$4"
+        onPress={onPress}
+        role="button"
+        aria-label={`${name}. ${detailsLabel}`}
+      >
+        <XStack alignItems="center" gap="$3">
+          <Stack
+            width={36}
+            height={36}
+            flexShrink={0}
+            alignItems="center"
+            justifyContent="center"
+            borderRadius="$full"
+            bg="$bgApp"
+          >
+            <Token
+              size="md"
+              tokenImageUri={logo}
+              networkId={protocol.networkId}
+              showNetworkIcon={Boolean(isAllNetworks && protocol.networkId)}
+            />
+          </Stack>
+          <SizableText
+            size="$bodyMd"
+            color="$textSubdued"
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            flex={1}
+            minWidth={0}
+          >
+            {name}
+          </SizableText>
+        </XStack>
+        <YStack gap="$1">
+          <SizableText
+            size="$heading3xl"
+            numberOfLines={1}
+            fontVariant={TABULAR_NUMS}
+            // Tighten the 28px display number — default heading tracking
+            // reads loose at this size.
+            letterSpacing={-0.5}
+          >
+            {formattedNetWorth}
+          </SizableText>
+          {formattedPercent ? (
+            <SizableText
+              size="$bodyMd"
+              color="$textSubdued"
+              numberOfLines={1}
+              fontVariant={TABULAR_NUMS}
+            >
+              {formattedPercent}
+            </SizableText>
+          ) : null}
+        </YStack>
+      </YStack>
+    );
+  }
+
+  if (size === 'medium') {
+    // Medium (2x1): horizontal row. Logo on the left, amount + name in the
+    // body with amount as primary typography, pct right-aligned subdued.
+    // Amount = $headingLg (18) — 1.29x small, well above the 1.25 floor.
+    return (
+      <XStack
+        {...SHELL_BASE}
+        flex={1}
+        height="100%"
+        width="100%"
+        px="$4"
+        py="$3"
         alignItems="center"
-        justifyContent="center"
+        gap="$3"
+        onPress={onPress}
+        role="button"
+        aria-label={`${name}. ${detailsLabel}`}
       >
         <Stack
           width={32}
           height={32}
-          borderRadius="$full"
-          bg="$bgApp"
+          flexShrink={0}
           alignItems="center"
           justifyContent="center"
+          borderRadius="$full"
+          bg="$bgApp"
         >
           <Token
             size="md"
@@ -85,10 +169,74 @@ function DeFiOverviewTile({
             showNetworkIcon={Boolean(isAllNetworks && protocol.networkId)}
           />
         </Stack>
+        <YStack flex={1} minWidth={0} gap="$0.5">
+          <SizableText
+            size="$headingLg"
+            numberOfLines={1}
+            fontVariant={TABULAR_NUMS}
+          >
+            {formattedNetWorth}
+          </SizableText>
+          <SizableText
+            size="$bodyMd"
+            color="$textSubdued"
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {name}
+          </SizableText>
+        </YStack>
+        {formattedPercent ? (
+          <SizableText
+            size="$bodySm"
+            color="$textSubdued"
+            numberOfLines={1}
+            fontVariant={TABULAR_NUMS}
+          >
+            {formattedPercent}
+          </SizableText>
+        ) : null}
+      </XStack>
+    );
+  }
+
+  // Small (1x1, default): the compact stacked layout, kept close to the
+  // pre-bento tile so existing screens (and the native fallback) read
+  // identically. Amount = $bodyMdMedium (14, semi-bold), pct = $bodyXs
+  // (11, subdued).
+  return (
+    <XStack
+      {...SHELL_BASE}
+      flex={1}
+      height="100%"
+      width="100%"
+      px="$3"
+      py="$3"
+      alignItems="center"
+      gap="$3"
+      onPress={onPress}
+      role="button"
+      aria-label={`${name}. ${detailsLabel}`}
+    >
+      <Stack
+        width={32}
+        height={32}
+        flexShrink={0}
+        alignItems="center"
+        justifyContent="center"
+        borderRadius="$full"
+        bg="$bgApp"
+      >
+        <Token
+          size="md"
+          tokenImageUri={logo}
+          networkId={protocol.networkId}
+          showNetworkIcon={Boolean(isAllNetworks && protocol.networkId)}
+        />
       </Stack>
-      <YStack flex={1} minWidth={0} gap="$1">
+      <YStack flex={1} minWidth={0} gap="$0.5">
         <SizableText
-          size="$bodyMd"
+          size="$bodySm"
           color="$textSubdued"
           numberOfLines={1}
           ellipsizeMode="tail"
@@ -96,21 +244,20 @@ function DeFiOverviewTile({
           {name}
         </SizableText>
         <SizableText
-          size="$bodyLgMedium"
+          size="$bodyMdMedium"
           numberOfLines={1}
           fontVariant={TABULAR_NUMS}
         >
           {formattedNetWorth}
         </SizableText>
-        {typeof percent === 'number' ? (
+        {formattedPercent ? (
           <SizableText
-            size="$bodyMd"
+            size="$bodyXs"
             color="$textSubdued"
             numberOfLines={1}
-            ellipsizeMode="tail"
             fontVariant={TABULAR_NUMS}
           >
-            {formatPortfolioPercent(percent, netWorth)}
+            {formattedPercent}
           </SizableText>
         ) : null}
       </YStack>

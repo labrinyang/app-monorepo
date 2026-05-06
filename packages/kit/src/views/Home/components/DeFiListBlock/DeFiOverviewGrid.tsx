@@ -8,17 +8,44 @@ import type {
 } from '@onekeyhq/shared/types/defi';
 
 import { DeFiOverviewDesktopGrid } from './DeFiOverviewDesktopGrid';
-import { buildOverviewGridStyle } from './DeFiOverviewLayout';
+import {
+  OVERVIEW_BENTO_ROW_HEIGHT,
+  buildOverviewGridStyle,
+} from './DeFiOverviewLayout';
 import {
   buildDeFiOverviewRenderCells,
-  getOverviewCellsLimit,
+  getBentoMediumCount,
+  getBentoSmallCount,
 } from './DeFiOverviewPlanner';
 import { useDeFiOverviewTopN } from './hooks/useDeFiOverviewTopN';
 
+import type { IDeFiOverviewSize } from './DeFiOverviewPlanner';
 import type { IOverviewCols } from './overviewColsResolver';
 
 const OVERVIEW_TOGGLE_PRESS_LOCK_MS = 600;
-const SKELETON_TILE_HEIGHT = 60;
+
+const SKELETON_SIZE_TO_GRID_STYLE: Record<
+  Extract<IDeFiOverviewSize, 'hero' | 'medium' | 'small'>,
+  React.CSSProperties
+> = {
+  hero: { gridColumnEnd: 'span 2', gridRowEnd: 'span 2' },
+  medium: { gridColumnEnd: 'span 2', gridRowEnd: 'span 1' },
+  small: { gridColumnEnd: 'span 1', gridRowEnd: 'span 1' },
+};
+
+type ISkeletonShape = Extract<IDeFiOverviewSize, 'hero' | 'medium' | 'small'>;
+
+function buildSkeletonShapes(cols: IOverviewCols): ISkeletonShape[] {
+  // Mirror the bento composition so the loading state has the same visual
+  // rhythm the loaded view will assume.
+  const mediumCount = getBentoMediumCount(cols);
+  const smallCount = getBentoSmallCount(cols);
+  return [
+    'hero' as const,
+    ...Array.from({ length: mediumCount }, () => 'medium' as const),
+    ...Array.from({ length: smallCount }, () => 'small' as const),
+  ];
+}
 
 export type IDeFiOverviewGridProps = {
   cols: IOverviewCols;
@@ -88,7 +115,7 @@ function DeFiOverviewGrid({
   );
 
   if (isLoading) {
-    const skeletonCount = getOverviewCellsLimit(cols);
+    const shapes = buildSkeletonShapes(cols);
     // Tamagui's $gtMd prop is typed against StackStyle (which doesn't allow
     // `display: 'grid'`). Cast through `unknown` so we can pass a CSS-grid
     // template object without spreading `any` into the call site.
@@ -98,20 +125,27 @@ function DeFiOverviewGrid({
     >;
     return (
       <XStack width="100%" flexWrap="wrap" gap="$2" $gtMd={gridStyle}>
-        {Array.from({ length: skeletonCount }).map((_, i) => (
-          <XStack
-            // eslint-disable-next-line react/no-array-index-key
-            key={`defi-overview-skeleton-${i}`}
-            minWidth={0}
-            flex={1}
-          >
-            <Skeleton
-              height={SKELETON_TILE_HEIGHT}
-              borderRadius="$3"
+        {shapes.map((shape, i) => {
+          const skeletonHeight =
+            shape === 'hero'
+              ? OVERVIEW_BENTO_ROW_HEIGHT * 2 + 8
+              : OVERVIEW_BENTO_ROW_HEIGHT;
+          return (
+            <XStack
+              // eslint-disable-next-line react/no-array-index-key
+              key={`defi-overview-skeleton-${shape}-${i}`}
+              minWidth={0}
               flex={1}
-            />
-          </XStack>
-        ))}
+              style={SKELETON_SIZE_TO_GRID_STYLE[shape]}
+            >
+              <Skeleton
+                height={skeletonHeight}
+                borderRadius="$3"
+                flex={1}
+              />
+            </XStack>
+          );
+        })}
       </XStack>
     );
   }
