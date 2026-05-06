@@ -66,46 +66,55 @@ function DeFiPortfolioStackedBar({
         <XStack
           key={seg.key}
           flexBasis={`${seg.flexBasis}%`}
+          flexGrow={0}
+          flexShrink={0}
           alignItems="stretch"
         >
-          {index > 0 ? <Stack width={gap} bg="$bgApp" /> : null}
-          <Tooltip
-            renderContent={
-              <Stack px="$2" py="$1.5" gap="$0.5">
-                <SizableText size="$bodyMdMedium">{seg.sliceLabel}</SizableText>
-                <SizableText size="$bodySm" color="$textSubdued">
-                  {seg.label}
-                </SizableText>
-                <NumberSizeableTextWrapper
-                  hideValue={hideValue}
-                  size="$bodySm"
-                  formatter="value"
-                  formatterOptions={{ currency: currencySymbol }}
-                >
-                  {String(seg.netWorth)}
-                </NumberSizeableTextWrapper>
-              </Stack>
-            }
-            renderTrigger={
-              <Stack
-                flex={1}
-                bg={seg.colorToken}
-                alignItems="center"
-                justifyContent="center"
-                cursor="default"
-              >
-                {seg.showLabel ? (
-                  <SizableText
-                    size="$bodySmMedium"
-                    color="$whiteA12"
-                    selectable={false}
-                  >
+          {index > 0 ? (
+            <Stack width={gap} bg="$bgApp" flexShrink={0} />
+          ) : null}
+          <Stack flex={1} minWidth={0}>
+            <Tooltip
+              renderContent={
+                <Stack px="$2" py="$1.5" gap="$0.5">
+                  <SizableText size="$bodyMdMedium">
+                    {seg.sliceLabel}
+                  </SizableText>
+                  <SizableText size="$bodySm" color="$textSubdued">
                     {seg.label}
                   </SizableText>
-                ) : null}
-              </Stack>
-            }
-          />
+                  <NumberSizeableTextWrapper
+                    hideValue={hideValue}
+                    size="$bodySm"
+                    formatter="value"
+                    formatterOptions={{ currency: currencySymbol }}
+                  >
+                    {String(seg.netWorth)}
+                  </NumberSizeableTextWrapper>
+                </Stack>
+              }
+              renderTrigger={
+                <Stack
+                  width="100%"
+                  height="100%"
+                  bg={seg.colorToken}
+                  alignItems="center"
+                  justifyContent="center"
+                  cursor="default"
+                >
+                  {seg.showLabel ? (
+                    <SizableText
+                      size="$bodySmMedium"
+                      color="$whiteA12"
+                      selectable={false}
+                    >
+                      {seg.label}
+                    </SizableText>
+                  ) : null}
+                </Stack>
+              }
+            />
+          </Stack>
         </XStack>
       ))}
     </XStack>
