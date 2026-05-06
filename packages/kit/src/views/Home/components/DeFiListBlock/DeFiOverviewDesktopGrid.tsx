@@ -9,9 +9,11 @@ import { DeFiOverviewMoreTile } from './DeFiOverviewMoreTile';
 import { DeFiOverviewTile } from './DeFiOverviewTile';
 
 import type { IDeFiOverviewRenderCell } from './DeFiOverviewPlanner';
+import type { IOverviewCols } from './overviewColsResolver';
 
 export type IDeFiOverviewDesktopGridProps = {
   cells: IDeFiOverviewRenderCell[];
+  cols: IOverviewCols;
   protocolMap: Record<string, IProtocolSummary>;
   onPressProtocol: (protocol: IDeFiProtocol) => void;
   onPressMore: () => void;
@@ -21,6 +23,7 @@ export type IDeFiOverviewDesktopGridProps = {
 
 function DeFiOverviewDesktopGrid({
   cells,
+  cols: _cols, // intentionally unused on native; web variant honours it
   protocolMap,
   onPressProtocol,
   onPressMore,

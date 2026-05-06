@@ -116,6 +116,7 @@ function DeFiOverviewCard({
   return (
     <DeFiOverviewDesktopGrid
       cells={cells}
+      cols={4}
       protocolMap={protocolMap}
       onPressProtocol={handleProtocolPress}
       onPressMore={handleMore}
