@@ -149,6 +149,11 @@ const ProtocolDesktopLayout = memo(
           borderRadius="$3"
           borderCurve="continuous"
           overflow="hidden"
+          // Body bg = $bgApp, header bg = $bgSubdued (in ProtocolHeaderRow).
+          // The card body matches the page so the soft shadow ring is the
+          // only edge between content and page; the header gets the slight
+          // bg lift that makes it read as a tabbed handle. Flipping the
+          // pair would invert the reading and is intentional.
           bg="$bgApp"
           $platform-web={{
             boxShadow: PROTOCOL_CARD_WEB_SHADOW,
@@ -198,6 +203,11 @@ const ProtocolDesktopLayout = memo(
                 )}
               </Accordion.Trigger>
               <Accordion.Content exitStyle={{ opacity: 0 }} px="$0" py="$0">
+                {/* This top hairline is the header→positions divider.
+                    ProtocolHeaderRow used to draw its own bottom border in
+                    the in-card case, but that doubled up with the parent
+                    card's ring shadow into a faint inset line; the divider
+                    now lives here exclusively. */}
                 <YStack
                   borderTopWidth={StyleSheet.hairlineWidth}
                   borderColor="$borderSubdued"

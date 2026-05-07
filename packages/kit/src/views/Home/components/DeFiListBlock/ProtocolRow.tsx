@@ -59,6 +59,7 @@ const ProtocolRow = memo(
           gap="$2"
           bg="$bgSubdued"
           borderRadius="$3"
+          borderCurve="continuous"
           px="$3"
           py="$2.5"
           hoverStyle={{ bg: '$bgHover' }}
