@@ -8,7 +8,6 @@ import type {
 
 import { DeFiOverviewGrid } from './DeFiOverviewGrid';
 import { DeFiPortfolioStackedBar } from './DeFiPortfolioStackedBar';
-import { buildPortfolioSliceLookup } from './DeFiPortfolioStats';
 import { resolveOverviewCols } from './overviewColsResolver';
 
 import type { IPortfolioStats } from './DeFiPortfolioStats';
@@ -43,14 +42,6 @@ function DeFiAllocationCard({
     [media.gtXl, media.gtLg],
   );
 
-  // The bar's slice palette is the dictionary every tile consults
-  // for its color rail and percent suffix. Compute once, hand both
-  // siblings the same reference so they stay perfectly in sync.
-  const sliceLookup = useMemo(
-    () => buildPortfolioSliceLookup(stats.slices),
-    [stats.slices],
-  );
-
   // No outer card chrome: each tile is a $bgSubdued card sitting on the
   // page's $bgApp directly, matching the OneKey ProtocolRow pattern.
   // The stacked bar is its own bare block above the grid; bar segments
@@ -62,7 +53,6 @@ function DeFiAllocationCard({
         cols={cols}
         protocols={protocols}
         protocolMap={protocolMap}
-        sliceLookup={sliceLookup}
         getNetWorth={getNetWorth}
         onPressProtocol={onPressProtocol}
         isLoading={isLoading}

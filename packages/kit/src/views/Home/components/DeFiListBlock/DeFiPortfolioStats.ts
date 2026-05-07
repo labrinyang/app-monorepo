@@ -41,11 +41,10 @@ export type IPortfolioStats = {
 /**
  * Lookup from protocol slug -> slice. Tail protocols (those merged
  * into the Others slice) intentionally do NOT appear here: their bar
- * representation is the aggregate Others band, so projecting that
- * neutral color back onto each individual tile would imply a 1:1
- * link that does not exist. Tiles without a hit render with no rail
- * and no percent suffix, which is the honest signal: "you're in the
- * tail." Top-N tiles get the jewel rail + their precise share.
+ * representation is the aggregate Others band. This is intentionally
+ * separate from the overview tile grid: stacked bar consumers may use
+ * it to look up aggregate protocol slices, but individual protocol
+ * cards should keep rendering their own per-network/value data.
  */
 export type IPortfolioSliceLookup = ReadonlyMap<string, IPortfolioSlice>;
 

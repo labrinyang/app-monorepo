@@ -8,6 +8,7 @@ import {
   Stack,
   Tooltip,
   XStack,
+  YStack,
 } from '@onekeyhq/components';
 import { NetworkAvatarGroup } from '@onekeyhq/kit/src/components/NetworkAvatar';
 
@@ -23,30 +24,19 @@ export type IDeFiPortfolioStackedBarProps = {
   isLoading?: boolean;
 };
 
-const DEFAULT_HEIGHT = 24;
+const DEFAULT_HEIGHT = 18;
 /**
- * Segment gap rendered as the page background ($bgApp). The "gap is
- * the surface, not transparent or white" rule (per GitHub's language
- * bar and macOS Storage) is what makes the bar read as a single tiled
- * unit instead of a stack of separate pills. 2px = $0.5.
+ * A one-pixel track seam keeps adjacent colors readable without turning
+ * each segment into its own pill.
  */
-const DEFAULT_GAP = 2;
-/**
- * Triple-layered shadow language reused from ProtocolRow / Tile. The
- * INSET form (web only) gives the bar a "recessed instrument" feel
- * borrowed from macOS Storage. It costs one declaration, with a large
- * polish gain.
- */
-const STACKED_BAR_INSET_SHADOW =
-  'inset 0 0 0 1px rgba(0, 0, 0, 0.04), inset 0 1px 1px 0 rgba(0, 0, 0, 0.05)';
+const DEFAULT_GAP = 1;
 
 /**
- * Mirrors the parent card's $3 (= 12px) radius. Used for the loading
- * Skeleton, whose `radius` prop accepts a number — Tamagui token strings
- * passed via `borderRadius` would silently fall back to the
- * BaseSkeleton DEFAULT_RADIUS=8.
+ * GitHub language-bar inspired chrome: one continuous shell, no inner
+ * rounding, no raised slices.
  */
-const SHELL_RADIUS_PX = 12;
+const STACKED_BAR_SHELL_SHADOW =
+  'inset 0 0 0 1px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.28)';
 
 /**
  * Chrome shared by all three states (loading / empty / loaded) so the
@@ -60,15 +50,23 @@ const STACKED_BAR_CHROME = {
   width: '100%',
   overflow: 'hidden',
   '$platform-web': {
-    boxShadow: STACKED_BAR_INSET_SHADOW,
+    boxShadow: STACKED_BAR_SHELL_SHADOW,
   },
   '$platform-native': {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '$borderSubdued',
+  },
+  '$theme-dark': {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '$borderSubdued',
   },
 } as const;
 
 const TABULAR_NUMS: ['tabular-nums'] = ['tabular-nums'];
+
+const SEGMENT_OPACITY = 0.86;
+const SEGMENT_HOVER_OPACITY = 1;
+const LEGEND_DOT_SIZE = 6;
 
 function buildA11yLabel(slices: IPortfolioSlice[]): string {
   if (slices.length === 0) return 'Portfolio allocation';
@@ -120,7 +118,14 @@ function DeFiPortfolioStackedBar({
 
   if (isLoading) {
     return (
-      <Skeleton height={height} radius={SHELL_RADIUS_PX} {...STACKED_BAR_CHROME} />
+      <YStack gap="$2" width="100%">
+        <Skeleton height={height} radius={8} {...STACKED_BAR_CHROME} />
+        <XStack gap="$3" rowGap="$1.5" flexWrap="wrap">
+          <Skeleton height={14} radius={7} width={104} />
+          <Skeleton height={14} radius={7} width={92} />
+          <Skeleton height={14} radius={7} width={116} />
+        </XStack>
+      </YStack>
     );
   }
 
@@ -128,69 +133,118 @@ function DeFiPortfolioStackedBar({
     return (
       <Stack
         height={height}
-        borderRadius="$3"
-        bg="$bgStrong"
+        borderRadius="$2"
+        bg="$bgSubdued"
         accessibilityRole="image"
         accessibilityLabel="Portfolio allocation: empty"
         {...STACKED_BAR_CHROME}
-      />
+      >
+        <Stack flex={1} bg="$bgStrong" opacity={0.42} />
+      </Stack>
     );
   }
 
   return (
-    <XStack
-      height={height}
-      borderRadius="$3"
-      accessibilityRole="image"
-      accessibilityLabel={buildA11yLabel(slices)}
-      {...STACKED_BAR_CHROME}
-    >
-      {segments.map((seg, index) => (
-        <XStack
-          key={seg.key}
-          flexBasis={`${seg.flexBasis}%`}
-          flexGrow={0}
-          flexShrink={0}
-          alignItems="stretch"
-        >
-          {index > 0 ? <Stack width={gap} bg="$bgApp" flexShrink={0} /> : null}
-          <Stack
-            flex={1}
-            minWidth={0}
-            bg={seg.colorToken}
-            alignItems="center"
-            justifyContent="center"
-            overflow="hidden"
-            px="$1"
+    <YStack gap="$2" width="100%">
+      <XStack
+        height={height}
+        borderRadius="$2"
+        bg="$bgSubdued"
+        accessibilityRole="image"
+        accessibilityLabel={buildA11yLabel(slices)}
+        {...STACKED_BAR_CHROME}
+      >
+        {segments.map((seg, index) => (
+          <XStack
+            key={seg.key}
+            flexBasis={`${seg.flexBasis}%`}
+            flexGrow={0}
+            flexShrink={0}
+            alignItems="stretch"
           >
-            {seg.showLabel ? (
-              <SizableText
-                size="$bodySmMedium"
-                color={seg.labelColorToken}
-                selectable={false}
-                numberOfLines={1}
-                fontVariant={TABULAR_NUMS}
+            {index > 0 ? <Stack width={gap} flexShrink={0} /> : null}
+            <Stack
+              flex={1}
+              minWidth={0}
+              bg={seg.colorToken}
+              opacity={SEGMENT_OPACITY}
+              overflow="hidden"
+              position="relative"
+              hoverStyle={{ opacity: SEGMENT_HOVER_OPACITY }}
+              $platform-web={{
+                transition: 'opacity 180ms cubic-bezier(0.22, 1, 0.36, 1)',
+              }}
+            >
+              <Tooltip
+                renderContent={renderTooltipContent(seg)}
+                renderTrigger={
+                  <Stack
+                    position="absolute"
+                    left={0}
+                    top={0}
+                    right={0}
+                    bottom={0}
+                    cursor="default"
+                  />
+                }
+              />
+            </Stack>
+          </XStack>
+        ))}
+      </XStack>
+      <XStack gap="$3" rowGap="$1.5" flexWrap="wrap" alignItems="center">
+        {segments.map((seg) => (
+          <Tooltip
+            key={`legend-${seg.key}`}
+            renderContent={renderTooltipContent(seg)}
+            renderTrigger={
+              <XStack
+                alignItems="center"
+                gap="$1.5"
+                minWidth={0}
+                maxWidth={176}
+                cursor="default"
+                $platform-web={{
+                  transition: 'opacity 180ms cubic-bezier(0.22, 1, 0.36, 1)',
+                }}
+                hoverStyle={{ opacity: 0.78 }}
               >
-                {seg.label}
-              </SizableText>
-            ) : null}
-            <Tooltip
-              renderContent={renderTooltipContent(seg)}
-              renderTrigger={
                 <Stack
-                  position="absolute"
-                  left={0}
-                  top={0}
-                  right={0}
-                  bottom={0}
-                  cursor="default"
+                  width={LEGEND_DOT_SIZE}
+                  height={LEGEND_DOT_SIZE}
+                  borderRadius="$full"
+                  bg={seg.colorToken}
+                  opacity={SEGMENT_OPACITY}
+                  flexShrink={0}
+                  $platform-web={{
+                    boxShadow: 'inset 0 0 0 1px rgba(0, 0, 0, 0.06)',
+                  }}
                 />
-              }
-            />
-          </Stack>
-        </XStack>
-      ))}
-    </XStack>
+                <SizableText
+                  size="$bodySm"
+                  color="$textSubdued"
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  minWidth={0}
+                >
+                  {seg.sliceLabel}
+                </SizableText>
+                <SizableText
+                  size="$bodySmMedium"
+                  color="$text"
+                  selectable={false}
+                  numberOfLines={1}
+                  fontVariant={TABULAR_NUMS}
+                  flexShrink={0}
+                >
+                  {seg.label}
+                </SizableText>
+              </XStack>
+            }
+          />
+        ))}
+      </XStack>
+    </YStack>
   );
 }
 

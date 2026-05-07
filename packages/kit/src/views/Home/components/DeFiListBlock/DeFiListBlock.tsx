@@ -70,6 +70,10 @@ const MAX_PROTOCOLS_ON_SMALL_SCREEN = 6;
 const MAX_PROTOCOLS_ON_LARGE_SCREEN = OVERVIEW_TOP_N;
 const PROTOCOL_LIST_TOGGLE_PRESS_LOCK_MS = 600;
 
+function MobileProtocolDivider() {
+  return <Divider ml="$16" mr="$5" borderColor="$borderDisabled" />;
+}
+
 export type IDeFiListBlockProps = {
   refreshCacheOnly?: boolean;
   tableLayout?: boolean;
@@ -113,7 +117,7 @@ const ProtocolListItem = memo(
           tableLayout={tableLayout}
           isAllNetworks={isAllNetworks}
         />
-        {!tableLayout && !isLast ? <Divider mx="$5" /> : null}
+        {!tableLayout && !isLast ? <MobileProtocolDivider /> : null}
       </YStack>
     );
   },
@@ -1186,6 +1190,7 @@ function DeFiListBlock({
       <>
         <YStack
           gap={tableLayout ? '$5' : '$0'}
+          pt={tableLayout ? '$0' : '$1'}
           flex={1}
           pointerEvents={isProtocolListInteractionLocked ? 'none' : undefined}
         >

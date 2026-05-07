@@ -201,13 +201,7 @@ const ProtocolDesktopLayout = memo(
                 )}
               </Accordion.Trigger>
               <Accordion.Content exitStyle={{ opacity: 0 }} px="$0" py="$0">
-                {/* Header→positions divider; lives here (not on the
-                    header itself) so it doesn't double with the
-                    card's ring shadow. */}
-                <YStack
-                  borderTopWidth={StyleSheet.hairlineWidth}
-                  borderColor="$borderSubdued"
-                >
+                <YStack pt="$2">
                   {positions.map((position, index) => {
                     const isLastPosition = index === positions.length - 1;
                     return (
@@ -279,7 +273,7 @@ const ProtocolDesktopLayout = memo(
                           ))}
                         </YStack>
                         {index !== positions.length - 1 ? (
-                          <Stack px="$5">
+                          <Stack px="$5" pt="$3" pb="$2">
                             <Divider />
                           </Stack>
                         ) : null}

@@ -47,7 +47,6 @@ function DeFiOverviewDesktopGrid({
               protocol={cell.protocol}
               protocolInfo={cell.protocolInfo}
               netWorth={cell.netWorth}
-              slice={cell.slice}
               onPress={() => onPressProtocol(cell.protocol)}
               isAllNetworks={isAllNetworks}
             />

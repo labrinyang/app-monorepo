@@ -12,7 +12,6 @@ import { buildOverviewGridStyle } from './DeFiOverviewLayout';
 import { buildDeFiOverviewRenderCells } from './DeFiOverviewPlanner';
 import { useDeFiOverviewTopN } from './hooks/useDeFiOverviewTopN';
 
-import type { IPortfolioSliceLookup } from './DeFiPortfolioStats';
 import type { IOverviewCols } from './overviewColsResolver';
 
 /**
@@ -39,7 +38,6 @@ export type IDeFiOverviewGridProps = {
   cols: IOverviewCols;
   protocols: IDeFiProtocol[] | undefined;
   protocolMap: Record<string, IProtocolSummary>;
-  sliceLookup?: IPortfolioSliceLookup;
   isLoading?: boolean;
   isAllNetworks?: boolean;
   getNetWorth: (p: IDeFiProtocol) => number;
@@ -50,7 +48,6 @@ function DeFiOverviewGrid({
   cols,
   protocols,
   protocolMap,
-  sliceLookup,
   isLoading,
   isAllNetworks,
   getNetWorth,
@@ -68,9 +65,8 @@ function DeFiOverviewGrid({
         protocolMap,
         isExpanded,
         cols,
-        sliceLookup,
       }),
-    [rankedProtocols, protocolMap, isExpanded, cols, sliceLookup],
+    [rankedProtocols, protocolMap, isExpanded, cols],
   );
 
   const pressLockUntilRef = useRef(0);
@@ -117,11 +113,7 @@ function DeFiOverviewGrid({
             minWidth={0}
             flex={1}
           >
-            <Skeleton
-              height={SKELETON_TILE_HEIGHT}
-              radius={12}
-              flex={1}
-            />
+            <Skeleton height={SKELETON_TILE_HEIGHT} radius={12} flex={1} />
           </XStack>
         ))}
       </XStack>

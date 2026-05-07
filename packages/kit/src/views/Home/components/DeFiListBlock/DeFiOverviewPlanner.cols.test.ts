@@ -6,10 +6,6 @@ import type {
 
 import { buildDeFiOverviewRenderCells } from './DeFiOverviewPlanner';
 
-import type {
-  IPortfolioSlice,
-  IPortfolioSliceLookup,
-} from './DeFiPortfolioStats';
 import type { IDeFiOverviewCell } from './hooks/useDeFiOverviewTopN';
 
 function makeRanked(count: number, base = 1000): IDeFiOverviewCell[] {
@@ -110,75 +106,7 @@ describe('buildDeFiOverviewRenderCells with cols', () => {
     ).toEqual([]);
   });
 
-  it('attaches slice binding only to protocols present in the slice lookup', () => {
-    // Slices cover the top-3 protocols (p0..p2). p3..p5 are tail —
-    // they should render as "in the Others bucket": no rail, no
-    // percent suffix on the tile.
-    const lookup: IPortfolioSliceLookup = new Map<string, IPortfolioSlice>([
-      [
-        'p0',
-        {
-          key: 'p0',
-          label: 'p0',
-          netWorth: 1000,
-          percent: 50,
-          colorToken: '$blue9',
-          networkIds: ['evm--1'],
-        },
-      ],
-      [
-        'p1',
-        {
-          key: 'p1',
-          label: 'p1',
-          netWorth: 600,
-          percent: 30,
-          colorToken: '$purple9',
-          networkIds: ['evm--1'],
-        },
-      ],
-      [
-        'p2',
-        {
-          key: 'p2',
-          label: 'p2',
-          netWorth: 200,
-          percent: 10,
-          colorToken: '$teal9',
-          networkIds: ['evm--1'],
-        },
-      ],
-    ]);
-
-    const cells = buildDeFiOverviewRenderCells({
-      rankedProtocols: makeRanked(6),
-      protocolMap: makeMap(6),
-      isExpanded: false,
-      cols: 4,
-      sliceLookup: lookup,
-    });
-
-    expect(cells).toHaveLength(6);
-    expect(cells[0]).toMatchObject({
-      kind: 'protocol',
-      slice: { colorToken: '$blue9', percent: 50 },
-    });
-    expect(cells[1]).toMatchObject({
-      kind: 'protocol',
-      slice: { colorToken: '$purple9', percent: 30 },
-    });
-    expect(cells[2]).toMatchObject({
-      kind: 'protocol',
-      slice: { colorToken: '$teal9', percent: 10 },
-    });
-    // Tail tiles: undefined slice so the renderer suppresses both
-    // the color rail and the percent suffix.
-    for (const cell of cells.slice(3)) {
-      expect(cell).toMatchObject({ kind: 'protocol', slice: undefined });
-    }
-  });
-
-  it('omits slice binding when sliceLookup is absent (back-compat)', () => {
+  it('does not bind stacked-bar slice data to protocol cells', () => {
     const cells = buildDeFiOverviewRenderCells({
       rankedProtocols: makeRanked(3),
       protocolMap: makeMap(3),
@@ -186,7 +114,8 @@ describe('buildDeFiOverviewRenderCells with cols', () => {
       cols: 4,
     });
     for (const cell of cells) {
-      expect(cell).toMatchObject({ kind: 'protocol', slice: undefined });
+      expect(cell).toMatchObject({ kind: 'protocol' });
+      expect(cell).not.toHaveProperty('slice');
     }
   });
 });
