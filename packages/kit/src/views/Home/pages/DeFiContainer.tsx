@@ -231,8 +231,18 @@ function DeFiContainer() {
     [getLiveStickyOffset, reducedMotion],
   );
 
+  // Protocol count alone isn't a sufficient gate: a wallet with 2+
+  // protocols whose positions have all been closed reports
+  // protocols.length >= 2 but portfolioStats.slices === [] (exposure
+  // total is zero, so buildPortfolioStats short-circuits). Without
+  // the slice check, the bar would render its empty-state strip while
+  // the bento grid below shows N tiles all at $0 — two conflicting
+  // statements about the same wallet. Require at least one slice so
+  // the AllocationCard only appears when it has something to allocate.
   const shouldShowOverview =
-    tableLayout && (isOverviewLoading || (protocols?.length ?? 0) >= 2);
+    tableLayout &&
+    (isOverviewLoading ||
+      ((protocols?.length ?? 0) >= 2 && portfolioStats.slices.length > 0));
 
   const [pinnedKey, setPinnedKey] = useState<string | null>(null);
   const suppressPinRef = useRef(false);
