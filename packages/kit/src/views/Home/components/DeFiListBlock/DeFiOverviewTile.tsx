@@ -23,17 +23,29 @@ export type IDeFiOverviewTileProps = {
   protocolInfo: IProtocolSummary | undefined;
   netWorth: number | string;
   isAllNetworks?: boolean;
+  /**
+   * Color/percent of the bar slice this protocol owns. Set only for
+   * top-N protocols (those with their own slice). Tail protocols leave
+   * both undefined; the rail and percent suffix are then suppressed,
+   * mirroring the aggregate Others band in the bar above.
+   */
+  sliceColorToken?: string;
+  slicePercent?: number;
   onPress: () => void;
 };
 
-// Percent is intentionally NOT shown on the tile: the stacked bar
-// above already encodes proportion (visually + via inline labels +
-// via tooltip). The tile owns the absolute value.
+// The tile owns the absolute dollar value. The percent suffix and
+// color rail are the bridge to the stacked bar above: same rank,
+// same color, same percent. Without them, bar and grid live in
+// parallel universes — color carries identity in the bar but lacks
+// any anchor in the grid.
 function DeFiOverviewTile({
   protocol,
   protocolInfo,
   netWorth,
   isAllNetworks,
+  sliceColorToken,
+  slicePercent,
   onPress,
 }: IDeFiOverviewTileProps) {
   const intl = useIntl();
@@ -48,6 +60,14 @@ function DeFiOverviewTile({
     currencySymbol,
     settingsValue.hideValue,
   );
+  const hasSlice =
+    Boolean(sliceColorToken) &&
+    typeof slicePercent === 'number' &&
+    Number.isFinite(slicePercent);
+  // Integer percent here matches the bar's inline labels exactly.
+  // The bar's tooltip continues to carry one-decimal precision when
+  // a user wants the exact share.
+  const inlinePercent = hasSlice ? `${Math.round(slicePercent ?? 0)}%` : '';
 
   return (
     <XStack
@@ -76,6 +96,23 @@ function DeFiOverviewTile({
       role="button"
       aria-label={`${name}. ${detailsLabel}`}
     >
+      {sliceColorToken ? (
+        // 3px color rail — the bar↔tile bond. Inset 8% top/bottom so
+        // it reads as an accent stripe, not chrome bleeding into the
+        // tile's rounded corners. Token comes straight from the bar's
+        // PORTFOLIO_PALETTE so rail and segment match by construction.
+        <Stack
+          position="absolute"
+          left={0}
+          top="8%"
+          bottom="8%"
+          width={3}
+          borderTopRightRadius={1.5}
+          borderBottomRightRadius={1.5}
+          bg={sliceColorToken}
+          pointerEvents="none"
+        />
+      ) : null}
       <Stack
         width={36}
         height={36}
@@ -100,14 +137,31 @@ function DeFiOverviewTile({
         </Stack>
       </Stack>
       <YStack flex={1} minWidth={0} gap="$1">
-        <SizableText
-          size="$bodyMd"
-          color="$textSubdued"
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        >
-          {name}
-        </SizableText>
+        <XStack alignItems="baseline" gap="$1.5" minWidth={0}>
+          <SizableText
+            size="$bodyMd"
+            color="$textSubdued"
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            flexShrink={1}
+          >
+            {name}
+          </SizableText>
+          {hasSlice ? (
+            // flexShrink={0} so a long protocol name truncates first;
+            // the percent is the cross-link to the bar and must never
+            // be the piece that gets cut.
+            <SizableText
+              size="$bodySm"
+              color="$textDisabled"
+              fontVariant={TABULAR_NUMS}
+              flexShrink={0}
+              selectable={false}
+            >
+              {inlinePercent}
+            </SizableText>
+          ) : null}
+        </XStack>
         <SizableText
           size="$bodyLgMedium"
           numberOfLines={1}

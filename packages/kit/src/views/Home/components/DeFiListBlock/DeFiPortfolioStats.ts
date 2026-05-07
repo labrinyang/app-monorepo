@@ -38,6 +38,29 @@ export type IPortfolioStats = {
   slices: IPortfolioSlice[];
 };
 
+/**
+ * Lookup from protocol slug -> slice. Tail protocols (those merged
+ * into the Others slice) intentionally do NOT appear here: their bar
+ * representation is the aggregate Others band, so projecting that
+ * neutral color back onto each individual tile would imply a 1:1
+ * link that does not exist. Tiles without a hit render with no rail
+ * and no percent suffix, which is the honest signal: "you're in the
+ * tail." Top-N tiles get the jewel rail + their precise share.
+ */
+export type IPortfolioSliceLookup = ReadonlyMap<string, IPortfolioSlice>;
+
+export function buildPortfolioSliceLookup(
+  slices: IPortfolioSlice[],
+): IPortfolioSliceLookup {
+  const map = new Map<string, IPortfolioSlice>();
+  for (const slice of slices) {
+    if (slice.key !== PORTFOLIO_OTHERS_KEY) {
+      map.set(slice.key, slice);
+    }
+  }
+  return map;
+}
+
 type IBuildPortfolioStatsInput = {
   protocols: IDeFiProtocol[] | undefined;
   protocolMap: Record<string, IProtocolSummary>;

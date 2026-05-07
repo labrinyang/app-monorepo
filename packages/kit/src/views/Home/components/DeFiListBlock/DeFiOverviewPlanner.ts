@@ -4,6 +4,7 @@ import type {
   IProtocolSummary,
 } from '@onekeyhq/shared/types/defi';
 
+import type { IPortfolioSliceLookup } from './DeFiPortfolioStats';
 import type { IDeFiOverviewCell } from './hooks/useDeFiOverviewTopN';
 import type { IOverviewCols } from './overviewColsResolver';
 
@@ -31,6 +32,14 @@ export type IDeFiOverviewProtocolRenderCell = {
   protocol: IDeFiProtocol;
   protocolInfo: IProtocolSummary | undefined;
   netWorth: number;
+  /**
+   * Set only when this protocol owns a slice in the stacked bar
+   * (top-N). Tail protocols leave both fields undefined; the tile
+   * renders without a rail and without the percent suffix, matching
+   * the bar's aggregate Others band.
+   */
+  sliceColorToken?: string;
+  slicePercent?: number;
 };
 
 export type IDeFiOverviewMoreRenderCell = {
@@ -55,11 +64,17 @@ export type IDeFiOverviewRenderCell =
 function toProtocolCell(
   cell: IDeFiOverviewCell,
   protocolMap: Record<string, IProtocolSummary>,
+  sliceLookup: IPortfolioSliceLookup | undefined,
 ): IDeFiOverviewProtocolRenderCell {
   const key = defiUtils.buildProtocolMapKey({
     protocol: cell.protocol.protocol,
     networkId: cell.protocol.networkId,
   });
+  // Slice keys are protocol slugs (aggregated across networks). A
+  // multi-chain Aave position renders one bar slice but multiple
+  // tiles — every tile of the same protocol shares the slice, which
+  // is exactly what we want: same color rail, same percent.
+  const slice = sliceLookup?.get(cell.protocol.protocol);
   return {
     kind: 'protocol',
     key,
@@ -67,6 +82,8 @@ function toProtocolCell(
     protocol: cell.protocol,
     protocolInfo: protocolMap[key],
     netWorth: cell.netWorth,
+    sliceColorToken: slice?.colorToken,
+    slicePercent: slice?.percent,
   };
 }
 
@@ -75,13 +92,16 @@ export function buildDeFiOverviewRenderCells({
   protocolMap,
   isExpanded,
   cols,
+  sliceLookup,
 }: {
   rankedProtocols: IDeFiOverviewCell[];
   protocolMap: Record<string, IProtocolSummary>;
   isExpanded: boolean;
   cols: IOverviewCols;
+  sliceLookup?: IPortfolioSliceLookup;
 }): IDeFiOverviewRenderCell[] {
-  const toCell = (c: IDeFiOverviewCell) => toProtocolCell(c, protocolMap);
+  const toCell = (c: IDeFiOverviewCell) =>
+    toProtocolCell(c, protocolMap, sliceLookup);
 
   const cellsLimit = getOverviewCellsLimit(cols);
   const visibleCollapsed = getOverviewVisibleCollapsed(cols);

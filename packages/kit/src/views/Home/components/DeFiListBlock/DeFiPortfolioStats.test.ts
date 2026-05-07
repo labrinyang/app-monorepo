@@ -10,6 +10,7 @@ import {
 } from './DeFiPortfolioPalette';
 import {
   PORTFOLIO_TOP_N,
+  buildPortfolioSliceLookup,
   buildPortfolioStats,
   distributePercents,
 } from './DeFiPortfolioStats';
@@ -317,5 +318,37 @@ describe('buildPortfolioStats', () => {
       getNetWorth: () => 10,
     });
     expect(stats.slices[0].label).toBe('unknown');
+  });
+});
+
+describe('buildPortfolioSliceLookup', () => {
+  it('keys top-N slices by protocol slug and excludes the Others bucket', () => {
+    // Build a real top-6 portfolio: top-5 + Others. Lookup should
+    // expose exactly the 5 jewel slices, never the aggregate.
+    const protocols = ['a', 'b', 'c', 'd', 'e', 'f'].map((p) =>
+      makeProtocol(p),
+    );
+    const stats = buildPortfolioStats({
+      protocols,
+      protocolMap: makeMap(protocols.map((p) => ({ protocol: p.protocol }))),
+      getNetWorth: (p) => {
+        const order = ['a', 'b', 'c', 'd', 'e', 'f'];
+        const idx = order.indexOf(p.protocol);
+        return [100, 80, 60, 40, 20, 5][idx];
+      },
+    });
+
+    expect(stats.slices).toHaveLength(PORTFOLIO_TOP_N + 1); // 5 + Others
+    const lookup = buildPortfolioSliceLookup(stats.slices);
+    expect(lookup.size).toBe(PORTFOLIO_TOP_N);
+    expect(lookup.has('a')).toBe(true);
+    expect(lookup.has('e')).toBe(true);
+    expect(lookup.has('others')).toBe(false);
+    expect(lookup.has('f')).toBe(false);
+    expect(lookup.get('a')?.colorToken).toBe(PORTFOLIO_PALETTE_TOKENS[0]);
+  });
+
+  it('returns an empty lookup when there are no slices', () => {
+    expect(buildPortfolioSliceLookup([]).size).toBe(0);
   });
 });
