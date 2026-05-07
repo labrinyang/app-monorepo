@@ -9,16 +9,29 @@ import type {
 
 import { DeFiOverviewDesktopGrid } from './DeFiOverviewDesktopGrid';
 import { buildOverviewGridStyle } from './DeFiOverviewLayout';
-import {
-  buildDeFiOverviewRenderCells,
-  getOverviewCellsLimit,
-} from './DeFiOverviewPlanner';
+import { buildDeFiOverviewRenderCells } from './DeFiOverviewPlanner';
 import { useDeFiOverviewTopN } from './hooks/useDeFiOverviewTopN';
 
 import type { IPortfolioSliceLookup } from './DeFiPortfolioStats';
 import type { IOverviewCols } from './overviewColsResolver';
 
-const SKELETON_TILE_HEIGHT = 60;
+/**
+ * Approximates the rendered DeFiOverviewTile height: 36 px logo +
+ * py="$3.5" (= 14 px each side) + a 2-line text stack (name + value
+ * with a $1 gap). Kept ~2 px under the natural height so it never
+ * looks taller than reality on load — undershoot is invisible,
+ * overshoot causes layout reflow.
+ */
+const SKELETON_TILE_HEIGHT = 68;
+/**
+ * Skeleton row count is a hedge, not a prediction: we don't know how
+ * many protocols are coming until the fetch lands. Two rows reads as
+ * "the typical wallet is loading" without claiming more cells than
+ * exist — most users have 4 to 8 protocols, well under the 3*cols
+ * ceiling the bento grid can grow to. Real data drives the eventual
+ * grid; the skeleton merely warms up the area.
+ */
+const SKELETON_ROWS = 2;
 
 const OVERVIEW_TOGGLE_PRESS_LOCK_MS = 600;
 
@@ -87,7 +100,7 @@ function DeFiOverviewGrid({
   );
 
   if (isLoading) {
-    const skeletonCount = getOverviewCellsLimit(cols);
+    const skeletonCount = cols * SKELETON_ROWS;
     // Tamagui's $gtMd prop is typed against StackStyle (which doesn't allow
     // `display: 'grid'`). Cast through `unknown` so we can pass a CSS-grid
     // template object without spreading `any` into the call site.
@@ -107,6 +120,7 @@ function DeFiOverviewGrid({
             <Skeleton
               height={SKELETON_TILE_HEIGHT}
               borderRadius="$3"
+              borderCurve="continuous"
               flex={1}
             />
           </XStack>

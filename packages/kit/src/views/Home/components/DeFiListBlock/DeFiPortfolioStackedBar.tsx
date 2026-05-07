@@ -91,8 +91,26 @@ function DeFiPortfolioStackedBar({
   const segments = useMemo(() => buildStackedBarSegments(slices), [slices]);
   const a11yLabel = useMemo(() => buildA11yLabel(slices), [slices]);
 
+  // Loading / empty / loaded all share the same shell chrome — radius,
+  // continuous curve, inset shadow on web, hairline on native — so the
+  // load → render transition has zero shape jump. Only the bar's
+  // *contents* (skeleton shimmer / strong-neutral fill / segments) swap.
   if (isLoading) {
-    return <Skeleton height={height} borderRadius="$3" width="100%" />;
+    return (
+      <Skeleton
+        height={height}
+        width="100%"
+        borderRadius="$3"
+        borderCurve="continuous"
+        $platform-web={{
+          boxShadow: STACKED_BAR_INSET_SHADOW,
+        }}
+        $platform-native={{
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: '$borderSubdued',
+        }}
+      />
+    );
   }
 
   if (segments.length === 0) {
@@ -100,10 +118,19 @@ function DeFiPortfolioStackedBar({
       <Stack
         height={height}
         borderRadius="$3"
+        borderCurve="continuous"
         bg="$bgStrong"
         width="100%"
+        overflow="hidden"
         accessibilityRole="image"
         accessibilityLabel="Portfolio allocation: empty"
+        $platform-web={{
+          boxShadow: STACKED_BAR_INSET_SHADOW,
+        }}
+        $platform-native={{
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: '$borderSubdued',
+        }}
       />
     );
   }
@@ -112,6 +139,7 @@ function DeFiPortfolioStackedBar({
     <XStack
       height={height}
       borderRadius="$3"
+      borderCurve="continuous"
       overflow="hidden"
       width="100%"
       accessibilityRole="image"

@@ -447,7 +447,12 @@ function DeFiContainer() {
             })}
             subTitle={
               isOverviewLoading ? (
-                <Skeleton width={120} height={20} borderRadius="$1" />
+                // Match DeFiListBlock's heading skeleton preset so the
+                // $headingXl total has one canonical loading shape across
+                // both surfaces (DeFi tab here, mobile section there).
+                // w=120 widens the preset's default 103 px to better
+                // approximate a typical "$XX,XXX.XX" measurement.
+                <Skeleton.HeadingXl w={120} />
               ) : (
                 <NumberSizeableTextWrapper
                   hideValue
