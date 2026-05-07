@@ -17,8 +17,9 @@ import { useDeFiOverviewTopN } from './hooks/useDeFiOverviewTopN';
 
 import type { IOverviewCols } from './overviewColsResolver';
 
-const OVERVIEW_TOGGLE_PRESS_LOCK_MS = 600;
 const SKELETON_TILE_HEIGHT = 60;
+
+const OVERVIEW_TOGGLE_PRESS_LOCK_MS = 600;
 
 export type IDeFiOverviewGridProps = {
   cols: IOverviewCols;
@@ -43,11 +44,6 @@ function DeFiOverviewGrid({
   const isExpanded = !isSliced;
 
   const rankedProtocols = useDeFiOverviewTopN(protocols, getNetWorth);
-  const overviewExposureTotal = useMemo(
-    () =>
-      rankedProtocols.reduce((acc, cell) => acc + Math.abs(cell.netWorth), 0),
-    [rankedProtocols],
-  );
 
   const cells = useMemo(
     () =>
@@ -55,10 +51,9 @@ function DeFiOverviewGrid({
         rankedProtocols,
         protocolMap,
         isExpanded,
-        exposureTotal: overviewExposureTotal,
         cols,
       }),
-    [rankedProtocols, protocolMap, isExpanded, overviewExposureTotal, cols],
+    [rankedProtocols, protocolMap, isExpanded, cols],
   );
 
   const pressLockUntilRef = useRef(0);

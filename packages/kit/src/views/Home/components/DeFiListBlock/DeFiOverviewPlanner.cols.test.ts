@@ -33,7 +33,6 @@ describe('buildDeFiOverviewRenderCells with cols', () => {
       rankedProtocols: makeRanked(12),
       protocolMap: makeMap(12),
       isExpanded: false,
-      exposureTotal: 100,
       cols: 4,
     });
     expect(cells).toHaveLength(12);
@@ -45,7 +44,6 @@ describe('buildDeFiOverviewRenderCells with cols', () => {
       rankedProtocols: makeRanked(20),
       protocolMap: makeMap(20),
       isExpanded: false,
-      exposureTotal: 100,
       cols: 4,
     });
     expect(cells).toHaveLength(11);
@@ -58,7 +56,6 @@ describe('buildDeFiOverviewRenderCells with cols', () => {
       rankedProtocols: makeRanked(20),
       protocolMap: makeMap(20),
       isExpanded: false,
-      exposureTotal: 100,
       cols: 5,
     });
     expect(cells).toHaveLength(14);
@@ -70,7 +67,6 @@ describe('buildDeFiOverviewRenderCells with cols', () => {
       rankedProtocols: makeRanked(25),
       protocolMap: makeMap(25),
       isExpanded: false,
-      exposureTotal: 100,
       cols: 6,
     });
     expect(cells).toHaveLength(17);
@@ -82,7 +78,6 @@ describe('buildDeFiOverviewRenderCells with cols', () => {
       rankedProtocols: makeRanked(25),
       protocolMap: makeMap(25),
       isExpanded: true,
-      exposureTotal: 100,
       cols: 6,
     });
     expect(cells).toHaveLength(26);
@@ -94,7 +89,6 @@ describe('buildDeFiOverviewRenderCells with cols', () => {
       rankedProtocols: makeRanked(8),
       protocolMap: makeMap(8),
       isExpanded: true,
-      exposureTotal: 100,
       cols: 4,
     });
     expect(cells).toHaveLength(8);
@@ -107,7 +101,6 @@ describe('buildDeFiOverviewRenderCells with cols', () => {
         rankedProtocols: [],
         protocolMap: {},
         isExpanded: false,
-        exposureTotal: 0,
         cols: 6,
       }),
     ).toEqual([]);

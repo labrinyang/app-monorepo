@@ -14,7 +14,6 @@ import type {
 } from '@onekeyhq/shared/types/defi';
 
 import { OVERVIEW_TILE_SHADOW } from './DeFiOverviewLayout';
-import { formatPortfolioPercent } from './formatPortfolioPercent';
 import { formatPortfolioTotal } from './formatPortfolioTotal';
 
 const TABULAR_NUMS: ['tabular-nums'] = ['tabular-nums'];
@@ -23,16 +22,17 @@ export type IDeFiOverviewTileProps = {
   protocol: IDeFiProtocol;
   protocolInfo: IProtocolSummary | undefined;
   netWorth: number | string;
-  percent?: number;
   isAllNetworks?: boolean;
   onPress: () => void;
 };
 
+// Percent is intentionally NOT shown on the tile: the stacked bar
+// above already encodes proportion (visually + via inline labels +
+// via tooltip). The tile owns the absolute value.
 function DeFiOverviewTile({
   protocol,
   protocolInfo,
   netWorth,
-  percent,
   isAllNetworks,
   onPress,
 }: IDeFiOverviewTileProps) {
@@ -115,17 +115,6 @@ function DeFiOverviewTile({
         >
           {formattedNetWorth}
         </SizableText>
-        {typeof percent === 'number' ? (
-          <SizableText
-            size="$bodyMd"
-            color="$textSubdued"
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            fontVariant={TABULAR_NUMS}
-          >
-            {formatPortfolioPercent(percent, netWorth)}
-          </SizableText>
-        ) : null}
       </YStack>
     </XStack>
   );

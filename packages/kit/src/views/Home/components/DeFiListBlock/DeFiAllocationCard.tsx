@@ -1,10 +1,6 @@
 import { memo, useMemo } from 'react';
 
 import { YStack, useMedia } from '@onekeyhq/components';
-import {
-  useSettingsPersistAtom,
-  useSettingsValuePersistAtom,
-} from '@onekeyhq/kit-bg/src/states/jotai/atoms';
 import type {
   IDeFiProtocol,
   IProtocolSummary,
@@ -35,8 +31,6 @@ function DeFiAllocationCard({
   getNetWorth,
   onPressProtocol,
 }: IDeFiAllocationCardProps) {
-  const [settings] = useSettingsPersistAtom();
-  const [settingsValue] = useSettingsValuePersistAtom();
   const media = useMedia();
 
   const cols = useMemo(
@@ -55,12 +49,7 @@ function DeFiAllocationCard({
   // and tile cards both read directly on the page bg.
   return (
     <YStack userSelect="none" gap="$5">
-      <DeFiPortfolioStackedBar
-        slices={stats.slices}
-        currencySymbol={settings.currencyInfo.symbol}
-        hideValue={settingsValue.hideValue}
-        isLoading={isLoading}
-      />
+      <DeFiPortfolioStackedBar slices={stats.slices} isLoading={isLoading} />
       <DeFiOverviewGrid
         cols={cols}
         protocols={protocols}
