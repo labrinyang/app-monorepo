@@ -119,8 +119,7 @@ function DeFiOverviewGrid({
           >
             <Skeleton
               height={SKELETON_TILE_HEIGHT}
-              borderRadius="$3"
-              borderCurve="continuous"
+              radius={12}
               flex={1}
             />
           </XStack>

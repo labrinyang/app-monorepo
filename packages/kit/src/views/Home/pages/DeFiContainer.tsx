@@ -260,9 +260,7 @@ function DeFiContainer() {
     };
 
     const resolveOriginNode = () => {
-      // Walk any live protocol anchor to find the page scroller. The
-      // sidebar used to win this lookup because it was always mounted;
-      // now any of the protocol cards serves equally well.
+      // Use any live protocol anchor as the origin to locate the page scroller.
       for (const handle of protocolRefs.current.values()) {
         const anchor = handle.getAnchor();
         if (anchor?.isConnected) {

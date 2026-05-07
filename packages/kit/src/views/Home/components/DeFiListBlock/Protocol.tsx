@@ -41,11 +41,9 @@ import type {
   IProtocolSummary,
 } from '@onekeyhq/shared/types/defi';
 
+import { OVERVIEW_TILE_SHADOW } from './DeFiOverviewLayout';
 import { ProtocolHeaderRow } from './ProtocolHeaderRow';
 import { ProtocolRow } from './ProtocolRow';
-
-const PROTOCOL_CARD_WEB_SHADOW =
-  '0 0 0 1px rgba(0, 0, 0, 0.04), 0 0 2px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.06)';
 
 type IProtocolProps = {
   protocol: IDeFiProtocol;
@@ -156,7 +154,7 @@ const ProtocolDesktopLayout = memo(
           // pair would invert the reading and is intentional.
           bg="$bgApp"
           $platform-web={{
-            boxShadow: PROTOCOL_CARD_WEB_SHADOW,
+            boxShadow: OVERVIEW_TILE_SHADOW,
           }}
           $platform-ios={{
             shadowColor: '#000',
@@ -203,11 +201,9 @@ const ProtocolDesktopLayout = memo(
                 )}
               </Accordion.Trigger>
               <Accordion.Content exitStyle={{ opacity: 0 }} px="$0" py="$0">
-                {/* This top hairline is the header→positions divider.
-                    ProtocolHeaderRow used to draw its own bottom border in
-                    the in-card case, but that doubled up with the parent
-                    card's ring shadow into a faint inset line; the divider
-                    now lives here exclusively. */}
+                {/* Header→positions divider; lives here (not on the
+                    header itself) so it doesn't double with the
+                    card's ring shadow. */}
                 <YStack
                   borderTopWidth={StyleSheet.hairlineWidth}
                   borderColor="$borderSubdued"

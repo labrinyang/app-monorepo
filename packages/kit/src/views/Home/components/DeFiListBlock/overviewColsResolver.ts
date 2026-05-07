@@ -3,7 +3,6 @@ export type IOverviewCols = 4 | 5 | 6;
 export type IOverviewMediaFlags = {
   gtXl?: boolean;
   gtLg?: boolean;
-  gtMd?: boolean;
 };
 
 /**
@@ -11,9 +10,10 @@ export type IOverviewMediaFlags = {
  *
  *   gtXl (>=1280)  -> 6
  *   gtLg (>=1024)  -> 5
- *   gtMd (>=768)   -> 4
- *   below gtMd     -> 4 (defensive; the DeFi tableLayout branch
- *                       already gates everything behind gtMd)
+ *   otherwise      -> 4
+ *
+ * The DeFi tableLayout branch already gates everything behind gtMd
+ * upstream, so the resolver doesn't need a gtMd input.
  */
 export function resolveOverviewCols(media: IOverviewMediaFlags): IOverviewCols {
   if (media.gtXl) return 6;

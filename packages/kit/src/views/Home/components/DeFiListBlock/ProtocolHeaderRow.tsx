@@ -93,11 +93,9 @@ function ProtocolHeaderRow({
       role={isInteractive ? 'button' : undefined}
       aria-label={isInteractive ? name : undefined}
       $platform-web={{
-        // border-radius is the only property that animates here:
-        // topRadius is interpolated by JS every scroll frame and the
-        // CSS transition smooths inter-frame jitter. Drop shadow used
-        // to be on this list to fade out an intra-card duplicate; the
-        // duplicate is gone, so its transition entry goes too.
+        // border-radius is the only animated property: topRadius is
+        // JS-interpolated each scroll frame, the CSS transition just
+        // smooths inter-frame jitter.
         transition: 'border-radius 140ms cubic-bezier(0.22, 1, 0.36, 1)',
       }}
     >

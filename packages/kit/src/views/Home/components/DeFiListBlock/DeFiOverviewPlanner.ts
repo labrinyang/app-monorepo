@@ -25,6 +25,11 @@ export function getOverviewVisibleCollapsed(cols: IOverviewCols): number {
   return getOverviewCellsLimit(cols) - OVERVIEW_MORE_CELL_SPAN;
 }
 
+export type IDeFiOverviewSliceBinding = {
+  colorToken: string;
+  percent: number;
+};
+
 export type IDeFiOverviewProtocolRenderCell = {
   kind: 'protocol';
   key: string;
@@ -34,12 +39,11 @@ export type IDeFiOverviewProtocolRenderCell = {
   netWorth: number;
   /**
    * Set only when this protocol owns a slice in the stacked bar
-   * (top-N). Tail protocols leave both fields undefined; the tile
-   * renders without a rail and without the percent suffix, matching
-   * the bar's aggregate Others band.
+   * (top-N). Tail protocols leave it undefined; the tile renders
+   * without a rail and without the percent suffix, matching the
+   * bar's aggregate Others band.
    */
-  sliceColorToken?: string;
-  slicePercent?: number;
+  slice?: IDeFiOverviewSliceBinding;
 };
 
 export type IDeFiOverviewMoreRenderCell = {
@@ -82,8 +86,9 @@ function toProtocolCell(
     protocol: cell.protocol,
     protocolInfo: protocolMap[key],
     netWorth: cell.netWorth,
-    sliceColorToken: slice?.colorToken,
-    slicePercent: slice?.percent,
+    slice: slice
+      ? { colorToken: slice.colorToken, percent: slice.percent }
+      : undefined,
   };
 }
 

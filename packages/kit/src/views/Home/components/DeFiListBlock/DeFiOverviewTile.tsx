@@ -16,6 +16,8 @@ import type {
 import { OVERVIEW_TILE_SHADOW } from './DeFiOverviewLayout';
 import { formatPortfolioTotal } from './formatPortfolioTotal';
 
+import type { IDeFiOverviewSliceBinding } from './DeFiOverviewPlanner';
+
 const TABULAR_NUMS: ['tabular-nums'] = ['tabular-nums'];
 
 export type IDeFiOverviewTileProps = {
@@ -24,28 +26,22 @@ export type IDeFiOverviewTileProps = {
   netWorth: number | string;
   isAllNetworks?: boolean;
   /**
-   * Color/percent of the bar slice this protocol owns. Set only for
-   * top-N protocols (those with their own slice). Tail protocols leave
-   * both undefined; the rail and percent suffix are then suppressed,
-   * mirroring the aggregate Others band in the bar above.
+   * Bar-slice binding. Set only for top-N protocols; tail tiles leave
+   * it undefined so the rail and percent suffix are suppressed,
+   * mirroring the bar's aggregate Others band.
    */
-  sliceColorToken?: string;
-  slicePercent?: number;
+  slice?: IDeFiOverviewSliceBinding;
   onPress: () => void;
 };
 
-// The tile owns the absolute dollar value. The percent suffix and
-// color rail are the bridge to the stacked bar above: same rank,
-// same color, same percent. Without them, bar and grid live in
-// parallel universes — color carries identity in the bar but lacks
-// any anchor in the grid.
+// The tile owns the absolute dollar value; the rail color and percent
+// suffix bridge it to the stacked bar slice it represents.
 function DeFiOverviewTile({
   protocol,
   protocolInfo,
   netWorth,
   isAllNetworks,
-  sliceColorToken,
-  slicePercent,
+  slice,
   onPress,
 }: IDeFiOverviewTileProps) {
   const intl = useIntl();
@@ -60,14 +56,10 @@ function DeFiOverviewTile({
     currencySymbol,
     settingsValue.hideValue,
   );
-  const hasSlice =
-    Boolean(sliceColorToken) &&
-    typeof slicePercent === 'number' &&
-    Number.isFinite(slicePercent);
-  // Integer percent here matches the bar's inline labels exactly.
-  // The bar's tooltip continues to carry one-decimal precision when
-  // a user wants the exact share.
-  const inlinePercent = hasSlice ? `${Math.round(slicePercent ?? 0)}%` : '';
+  const hasSlice = Boolean(slice && Number.isFinite(slice.percent));
+  // Integer percent matches the bar's inline labels exactly; the
+  // tooltip continues to carry one-decimal precision when needed.
+  const inlinePercent = hasSlice ? `${Math.round(slice?.percent ?? 0)}%` : '';
 
   return (
     <XStack
@@ -96,11 +88,10 @@ function DeFiOverviewTile({
       role="button"
       aria-label={`${name}. ${detailsLabel}`}
     >
-      {sliceColorToken ? (
-        // 3px color rail — the bar↔tile bond. Inset 8% top/bottom so
-        // it reads as an accent stripe, not chrome bleeding into the
-        // tile's rounded corners. Token comes straight from the bar's
-        // PORTFOLIO_PALETTE so rail and segment match by construction.
+      {slice ? (
+        // 3px color rail bonds this tile to its bar slice; inset
+        // top/bottom so it reads as an accent stripe instead of
+        // chrome bleeding into the tile's rounded corners.
         <Stack
           position="absolute"
           left={0}
@@ -109,7 +100,7 @@ function DeFiOverviewTile({
           width={3}
           borderTopRightRadius={1.5}
           borderBottomRightRadius={1.5}
-          bg={sliceColorToken}
+          bg={slice.colorToken}
           pointerEvents="none"
         />
       ) : null}

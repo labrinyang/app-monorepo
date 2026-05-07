@@ -40,6 +40,34 @@ const DEFAULT_GAP = 2;
 const STACKED_BAR_INSET_SHADOW =
   'inset 0 0 0 1px rgba(0, 0, 0, 0.04), inset 0 1px 1px 0 rgba(0, 0, 0, 0.05)';
 
+/**
+ * Mirrors the parent card's $3 (= 12px) radius. Used for the loading
+ * Skeleton, whose `radius` prop accepts a number — Tamagui token strings
+ * passed via `borderRadius` would silently fall back to the
+ * BaseSkeleton DEFAULT_RADIUS=8.
+ */
+const SHELL_RADIUS_PX = 12;
+
+/**
+ * Chrome shared by all three states (loading / empty / loaded) so the
+ * load → render transition has zero shape jump. Only the bar's
+ * *contents* (skeleton shimmer / strong-neutral fill / segments) swap.
+ * Border radius is excluded because Skeleton uses a different prop
+ * name; each call site applies it explicitly.
+ */
+const STACKED_BAR_CHROME = {
+  borderCurve: 'continuous',
+  width: '100%',
+  overflow: 'hidden',
+  '$platform-web': {
+    boxShadow: STACKED_BAR_INSET_SHADOW,
+  },
+  '$platform-native': {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '$borderSubdued',
+  },
+} as const;
+
 const TABULAR_NUMS: ['tabular-nums'] = ['tabular-nums'];
 
 function buildA11yLabel(slices: IPortfolioSlice[]): string {
@@ -89,27 +117,10 @@ function DeFiPortfolioStackedBar({
   isLoading,
 }: IDeFiPortfolioStackedBarProps) {
   const segments = useMemo(() => buildStackedBarSegments(slices), [slices]);
-  const a11yLabel = useMemo(() => buildA11yLabel(slices), [slices]);
 
-  // Loading / empty / loaded all share the same shell chrome — radius,
-  // continuous curve, inset shadow on web, hairline on native — so the
-  // load → render transition has zero shape jump. Only the bar's
-  // *contents* (skeleton shimmer / strong-neutral fill / segments) swap.
   if (isLoading) {
     return (
-      <Skeleton
-        height={height}
-        width="100%"
-        borderRadius="$3"
-        borderCurve="continuous"
-        $platform-web={{
-          boxShadow: STACKED_BAR_INSET_SHADOW,
-        }}
-        $platform-native={{
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: '$borderSubdued',
-        }}
-      />
+      <Skeleton height={height} radius={SHELL_RADIUS_PX} {...STACKED_BAR_CHROME} />
     );
   }
 
@@ -118,19 +129,10 @@ function DeFiPortfolioStackedBar({
       <Stack
         height={height}
         borderRadius="$3"
-        borderCurve="continuous"
         bg="$bgStrong"
-        width="100%"
-        overflow="hidden"
         accessibilityRole="image"
         accessibilityLabel="Portfolio allocation: empty"
-        $platform-web={{
-          boxShadow: STACKED_BAR_INSET_SHADOW,
-        }}
-        $platform-native={{
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: '$borderSubdued',
-        }}
+        {...STACKED_BAR_CHROME}
       />
     );
   }
@@ -139,18 +141,9 @@ function DeFiPortfolioStackedBar({
     <XStack
       height={height}
       borderRadius="$3"
-      borderCurve="continuous"
-      overflow="hidden"
-      width="100%"
       accessibilityRole="image"
-      accessibilityLabel={a11yLabel}
-      $platform-web={{
-        boxShadow: STACKED_BAR_INSET_SHADOW,
-      }}
-      $platform-native={{
-        borderWidth: StyleSheet.hairlineWidth,
-        borderColor: '$borderSubdued',
-      }}
+      accessibilityLabel={buildA11yLabel(slices)}
+      {...STACKED_BAR_CHROME}
     >
       {segments.map((seg, index) => (
         <XStack

@@ -110,7 +110,7 @@ describe('buildDeFiOverviewRenderCells with cols', () => {
     ).toEqual([]);
   });
 
-  it('attaches sliceColorToken/slicePercent only to protocols present in the slice lookup', () => {
+  it('attaches slice binding only to protocols present in the slice lookup', () => {
     // Slices cover the top-3 protocols (p0..p2). p3..p5 are tail —
     // they should render as "in the Others bucket": no rail, no
     // percent suffix on the tile.
@@ -161,31 +161,24 @@ describe('buildDeFiOverviewRenderCells with cols', () => {
     expect(cells).toHaveLength(6);
     expect(cells[0]).toMatchObject({
       kind: 'protocol',
-      sliceColorToken: '$blue9',
-      slicePercent: 50,
+      slice: { colorToken: '$blue9', percent: 50 },
     });
     expect(cells[1]).toMatchObject({
       kind: 'protocol',
-      sliceColorToken: '$purple9',
-      slicePercent: 30,
+      slice: { colorToken: '$purple9', percent: 30 },
     });
     expect(cells[2]).toMatchObject({
       kind: 'protocol',
-      sliceColorToken: '$teal9',
-      slicePercent: 10,
+      slice: { colorToken: '$teal9', percent: 10 },
     });
-    // Tail tiles: explicit undefined so the renderer suppresses both
+    // Tail tiles: undefined slice so the renderer suppresses both
     // the color rail and the percent suffix.
     for (const cell of cells.slice(3)) {
-      expect(cell).toMatchObject({
-        kind: 'protocol',
-        sliceColorToken: undefined,
-        slicePercent: undefined,
-      });
+      expect(cell).toMatchObject({ kind: 'protocol', slice: undefined });
     }
   });
 
-  it('omits slice fields when sliceLookup is absent (back-compat)', () => {
+  it('omits slice binding when sliceLookup is absent (back-compat)', () => {
     const cells = buildDeFiOverviewRenderCells({
       rankedProtocols: makeRanked(3),
       protocolMap: makeMap(3),
@@ -193,11 +186,7 @@ describe('buildDeFiOverviewRenderCells with cols', () => {
       cols: 4,
     });
     for (const cell of cells) {
-      expect(cell).toMatchObject({
-        kind: 'protocol',
-        sliceColorToken: undefined,
-        slicePercent: undefined,
-      });
+      expect(cell).toMatchObject({ kind: 'protocol', slice: undefined });
     }
   });
 });

@@ -39,9 +39,8 @@ function DeFiAllocationCard({
       resolveOverviewCols({
         gtXl: media.gtXl,
         gtLg: media.gtLg,
-        gtMd: media.gtMd,
       }),
-    [media.gtXl, media.gtLg, media.gtMd],
+    [media.gtXl, media.gtLg],
   );
 
   // The bar's slice palette is the dictionary every tile consults

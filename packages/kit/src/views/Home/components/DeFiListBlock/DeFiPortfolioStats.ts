@@ -87,11 +87,6 @@ function resolveLabel(
   return protocolMap[key]?.protocolName ?? protocol.protocol;
 }
 
-export function roundToOneDecimal(n: number): number {
-  if (!Number.isFinite(n)) return 0;
-  return Math.round(n * 10) / 10;
-}
-
 /**
  * Largest-remainder method, applied at one-decimal precision.
  *
