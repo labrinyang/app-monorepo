@@ -13,7 +13,6 @@ import {
   BrowserWindow,
   Menu,
   app,
-  dialog,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   inAppPurchase,
   ipcMain,
@@ -53,7 +52,7 @@ import {
   getMetadata,
 } from './bundle';
 import { ipcMessageKeys } from './config';
-import { ElectronTranslations, i18nFormat, i18nText, initLocale } from './i18n';
+import { ElectronTranslations, i18nText, initLocale } from './i18n';
 import { scheduleCrashDumpCleanup } from './libs/crashDumpCleanup';
 // Side-effect import: registers synchronous IPC handler for renderer MMKV access
 // eslint-disable-next-line import-js/order
@@ -775,8 +774,24 @@ async function createMainWindow() {
     isAppReady = true;
   });
 
+  // Gate shell.openExternal behind a protocol whitelist so a tainted main
+  // renderer (XSS) cannot weaponize window.open() into phishing redirects
+  // via javascript:/file:/data: URIs. Only https:// (and mailto:) are
+  // forwarded to the OS browser. See SlowMist audit Desktop-14.
   browserWindow.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'mailto:') {
+        logger.warn(
+          '[setWindowOpenHandler] blocked non-https url:',
+          parsed.protocol,
+        );
+        return { action: 'deny' };
+      }
+      void shell.openExternal(url);
+    } catch {
+      logger.warn('[setWindowOpenHandler] blocked malformed url');
+    }
     return { action: 'deny' };
   });
 
@@ -1139,12 +1154,28 @@ async function createMainWindow() {
 
   // Permission handler for webview (partition: persist:onekey)
   //
-  // - media: only allowed for whitelisted fiat pay sites (camera/microphone for KYC, etc.)
-  // - notifications: already disabled at the webview tag level via
-  //   disableBlinkFeatures="Notifications" in DesktopWebView.tsx,
-  //   so the Notification API is completely unavailable and this handler
-  //   will never receive a 'notifications' permission request.
-  // - all other permissions: allowed to preserve default Electron behavior.
+  // Default policy: DENY all permissions. Only types explicitly listed in
+  // WEBVIEW_ALLOWED_PERMISSIONS are granted. Previously the handler fell
+  // through to `callback(true)` for anything other than `media`, which let
+  // any dapp silently read the user's clipboard, geolocation, screen
+  // capture, etc. See SlowMist audit Desktop-10.1.
+  //
+  // - media: whitelisted fiat pay sites only (camera/microphone for KYC)
+  // - clipboard-sanitized-write: allowed (no information disclosure)
+  // - fullscreen / pointerLock: allowed (legitimate dapp UX for video/games);
+  //   revisit if business confirms they are unused
+  // - clipboard-read: DENIED at the Electron level so dapps cannot bypass
+  //   the `wallet_requestClipboardPermission` modal via
+  //   `navigator.clipboard.readText()`
+  // - notifications: already disabled at the Blink engine level via
+  //   `disableBlinkFeatures="Notifications"` in DesktopWebView.tsx
+  // - all other permissions (geolocation, display-capture, idle-detection,
+  //   midi, serial/usb/hid/bluetooth, etc.): DENIED
+  const WEBVIEW_ALLOWED_PERMISSIONS = new Set([
+    'fullscreen',
+    'pointerLock',
+    'clipboard-sanitized-write',
+  ]);
   const webviewSession = session.fromPartition('persist:onekey');
   webviewSession.setPermissionRequestHandler(
     (webContents, permission, callback, details) => {
@@ -1172,12 +1203,32 @@ async function createMainWindow() {
         callback(false);
         return;
       }
-      // Allow all non-media permissions to preserve default Electron behavior.
-      // Note: 'notifications' is never requested here because it is disabled
-      // at the Blink engine level (see disableBlinkFeatures in DesktopWebView.tsx).
-      callback(true);
+      if (WEBVIEW_ALLOWED_PERMISSIONS.has(permission)) {
+        callback(true);
+        return;
+      }
+      // Log only the origin — full URLs can carry session tokens or
+      // dapp-specific query strings that should not leak into log files.
+      let deniedOrigin = '<malformed>';
+      try {
+        deniedOrigin = new URL(requestingUrl || topLevelUrl).origin;
+      } catch {
+        // keep '<malformed>' fallback
+      }
+      logger.info('[webview] permission denied:', permission, deniedOrigin);
+      callback(false);
     },
   );
+  // Some permissions (notably clipboard) reach the renderer via the
+  // synchronous PermissionCheck path rather than PermissionRequest; without a
+  // check handler Electron's default is `true`, which would silently let
+  // dapps bypass the request-time policy above. Mirror the allowlist here.
+  // `media` keeps a true default so the dynamic fiat-pay whitelist still
+  // runs at request time.
+  webviewSession.setPermissionCheckHandler((_webContents, permission) => {
+    if (permission === 'media') return true;
+    return WEBVIEW_ALLOWED_PERMISSIONS.has(permission);
+  });
 
   session.defaultSession.webRequest.onBeforeSendHeaders(
     filter,
@@ -1979,7 +2030,6 @@ const cpuHistoryByPid = new Map<number, number[]>();
 const prevCumCpuByPid = new Map<number, number>();
 let lastSampleAt: number | null = null;
 let lastWatchdogFiredAt = 0;
-let watchdogDialogOpen = false;
 let cpuWatchdogInterval: ReturnType<typeof setInterval> | null = null;
 
 type ICpuWatchdogReason =
@@ -2121,18 +2171,6 @@ function startCpuWatchdog() {
   });
 }
 
-function pickWatchdogDialogParent(): BrowserWindow | undefined {
-  const candidates = BrowserWindow.getAllWindows().filter(
-    (w) => !w.isDestroyed() && w.isVisible(),
-  );
-  if (candidates.length === 0) return undefined;
-  return (
-    candidates.find((w) => w.isFocused()) ??
-    getSafelyMainWindow() ??
-    candidates[0]
-  );
-}
-
 function reportWatchdogToSentry(params: {
   reason: ICpuWatchdogReason;
   pid?: number;
@@ -2162,12 +2200,6 @@ function triggerCpuWatchdog(params: {
   bypassCooldown?: boolean;
 }) {
   const now = Date.now();
-  if (watchdogDialogOpen) {
-    logger.warn('[CPU Watchdog] trigger ignored — dialog already open', {
-      reason: params.reason,
-    });
-    return;
-  }
   if (
     !params.bypassCooldown &&
     now - lastWatchdogFiredAt < CPU_WATCHDOG_COOLDOWN_MS
@@ -2181,91 +2213,18 @@ function triggerCpuWatchdog(params: {
   }
   lastWatchdogFiredAt = now;
 
-  logger.warn('[CPU Watchdog] fired', params);
+  // UI suppressed: only collect local logs + Sentry telemetry while we
+  // investigate the underlying CPU regression. Re-enable surface (status
+  // indicator / non-blocking card) once root cause is identified.
+  logger.warn('[CPU Watchdog] fired (UI suppressed)', params);
   reportWatchdogToSentry(params);
-
-  const parent = pickWatchdogDialogParent();
-  if (!parent) {
-    logger.warn(
-      '[CPU Watchdog] no visible window to attach dialog to; skipping UI',
-    );
-    return;
-  }
-
-  const uptimeMinutes = Math.round(process.uptime() / 60);
-  let reasonText: string;
-  if (params.reason === 'unresponsive') {
-    reasonText = i18nText(ElectronTranslations.cpu_watchdog_unresponsive__desc);
-  } else if (params.reason === 'sustained-high-cpu-severe') {
-    const seconds = Math.round(
-      (CPU_WATCHDOG_SEVERE_SUSTAINED_SAMPLES *
-        CPU_WATCHDOG_SAMPLE_INTERVAL_MS) /
-        1000,
-    );
-    reasonText = i18nFormat(ElectronTranslations.cpu_watchdog_severe__desc, {
-      threshold: CPU_WATCHDOG_SEVERE_THRESHOLD_PERCENT,
-      seconds,
-    });
-  } else {
-    const minutes = Math.round(
-      (CPU_WATCHDOG_MILD_SUSTAINED_SAMPLES * CPU_WATCHDOG_SAMPLE_INTERVAL_MS) /
-        60_000,
-    );
-    reasonText = i18nFormat(ElectronTranslations.cpu_watchdog_mild__desc, {
-      threshold: CPU_WATCHDOG_MILD_THRESHOLD_PERCENT,
-      minutes,
-    });
-  }
-  const actionText = i18nFormat(
-    ElectronTranslations.cpu_watchdog_action__desc,
-    { minutes: uptimeMinutes },
-  );
-  const dialogTitle = i18nText(ElectronTranslations.cpu_watchdog__title);
-
-  watchdogDialogOpen = true;
-  void dialog
-    .showMessageBox(parent, {
-      type: 'warning',
-      title: dialogTitle,
-      message: dialogTitle,
-      detail: `${reasonText}\n\n${actionText}`,
-      buttons: [
-        i18nText(ElectronTranslations.settings_upload_state_logs),
-        i18nText(ElectronTranslations.troubleshooting_restart_app),
-        i18nText(ElectronTranslations.global_later),
-      ],
-      defaultId: 0,
-      cancelId: 2,
-      noLink: true,
-    })
-    .then(({ response }) => {
-      if (response === 0) {
-        const win = getSafelyMainWindow();
-        win?.webContents.send(ipcMessageKeys.CPU_WATCHDOG_OPEN_EXPORT_LOGS);
-      } else if (response === 1) {
-        if (!process.mas) {
-          app.relaunch();
-        }
-        app.exit(0);
-      } else {
-        logger.info('[CPU Watchdog] user dismissed dialog');
-      }
-    })
-    .catch((err) => {
-      logger.warn('[CPU Watchdog] dialog failed', err);
-    })
-    .finally(() => {
-      watchdogDialogOpen = false;
-    });
 }
 
 function resetCpuWatchdogStateForTesting() {
   logger.warn('[CPU Watchdog] cooldown reset via IPC', {
     previousLastFiredAt: lastWatchdogFiredAt,
-    previousDialogOpen: watchdogDialogOpen,
   });
   lastWatchdogFiredAt = 0;
-  watchdogDialogOpen = false;
   cpuHistoryByPid.clear();
   prevCumCpuByPid.clear();
   lastSampleAt = null;

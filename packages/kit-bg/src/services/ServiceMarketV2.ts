@@ -10,6 +10,7 @@ import {
 } from '@onekeyhq/shared/src/eventBus/appEventBus';
 import { defaultLogger } from '@onekeyhq/shared/src/logger/logger';
 import { memoizee } from '@onekeyhq/shared/src/utils/cacheUtils';
+import { dedupeTokenSelectorFavoriteCoins } from '@onekeyhq/shared/src/utils/perpsTokenSelectorFavorites';
 import sortUtils from '@onekeyhq/shared/src/utils/sortUtils';
 import timerUtils from '@onekeyhq/shared/src/utils/timerUtils';
 import { EServiceEndpointEnum } from '@onekeyhq/shared/types/endpoint';
@@ -270,12 +271,14 @@ class ServiceMarketV2 extends ServiceBase {
     interval,
     timeFrom,
     timeTo,
+    autoHandleError,
   }: {
     tokenAddress: string;
     networkId: string;
     interval?: string;
     timeFrom?: number;
     timeTo?: number;
+    autoHandleError?: boolean;
   }) {
     let innerInterval = interval?.toUpperCase();
 
@@ -283,12 +286,7 @@ class ServiceMarketV2 extends ServiceBase {
       innerInterval = innerInterval?.toLowerCase();
     }
 
-    const client = await this.getClient(EServiceEndpointEnum.Utility);
-    const response = await client.get<{
-      code: number;
-      message: string;
-      data: IMarketTokenKLineResponse;
-    }>('/utility/v2/market/token/kline', {
+    const requestConfig = {
       params: {
         tokenAddress,
         networkId,
@@ -297,7 +295,15 @@ class ServiceMarketV2 extends ServiceBase {
         timeTo,
         currency: 'usd',
       },
-    });
+      ...(autoHandleError === false ? { autoHandleError: false } : {}),
+    };
+
+    const client = await this.getClient(EServiceEndpointEnum.Utility);
+    const response = await client.get<{
+      code: number;
+      message: string;
+      data: IMarketTokenKLineResponse;
+    }>('/utility/v2/market/token/kline', requestConfig);
     const { data } = response.data;
     return data;
   }
@@ -920,17 +926,23 @@ class ServiceMarketV2 extends ServiceBase {
   }) {
     try {
       const current = await perpTokenFavoritesPersistAtom.get();
-      const hasCoin = current.favorites.includes(coin);
+      const favorites = dedupeTokenSelectorFavoriteCoins(current.favorites);
+      const hasCoin = favorites.includes(coin);
 
       if (action === 'add' && !hasCoin) {
         await perpTokenFavoritesPersistAtom.set({
           ...current,
-          favorites: [...current.favorites, coin],
+          favorites: [...favorites, coin],
         });
       } else if (action === 'remove' && hasCoin) {
         await perpTokenFavoritesPersistAtom.set({
           ...current,
-          favorites: current.favorites.filter((f) => f !== coin),
+          favorites: favorites.filter((f) => f !== coin),
+        });
+      } else if (favorites.length !== current.favorites.length) {
+        await perpTokenFavoritesPersistAtom.set({
+          ...current,
+          favorites,
         });
       }
     } catch (error) {
@@ -985,7 +997,10 @@ class ServiceMarketV2 extends ServiceBase {
           .filter((item) => !!item.perpsCoin)
           .map((item) => item.perpsCoin ?? ''),
       );
-      const perpsCoins = new Set(perpsFavorites.favorites);
+      const dedupedPerpsFavorites = dedupeTokenSelectorFavoriteCoins(
+        perpsFavorites.favorites,
+      );
+      const perpsCoins = new Set(dedupedPerpsFavorites);
 
       // Market has but Perps doesn't
       const missingInPerps = [...marketPerpsCoins].filter(
@@ -996,6 +1011,16 @@ class ServiceMarketV2 extends ServiceBase {
         (c) => !marketPerpsCoins.has(c),
       );
 
+      if (
+        dedupedPerpsFavorites.length !== perpsFavorites.favorites.length &&
+        missingInPerps.length === 0
+      ) {
+        await perpTokenFavoritesPersistAtom.set({
+          ...perpsFavorites,
+          favorites: dedupedPerpsFavorites,
+        });
+      }
+
       if (missingInPerps.length === 0 && missingInMarket.length === 0) {
         return;
       }
@@ -1003,12 +1028,18 @@ class ServiceMarketV2 extends ServiceBase {
       // Sync missing items to Perps atom
       if (missingInPerps.length > 0) {
         const current = await perpTokenFavoritesPersistAtom.get();
-        const existingSet = new Set(current.favorites);
+        const favorites = dedupeTokenSelectorFavoriteCoins(current.favorites);
+        const existingSet = new Set(favorites);
         const toAdd = missingInPerps.filter((c) => !existingSet.has(c));
         if (toAdd.length > 0) {
           await perpTokenFavoritesPersistAtom.set({
             ...current,
-            favorites: [...current.favorites, ...toAdd],
+            favorites: [...favorites, ...toAdd],
+          });
+        } else if (favorites.length !== current.favorites.length) {
+          await perpTokenFavoritesPersistAtom.set({
+            ...current,
+            favorites,
           });
         }
       }

@@ -142,6 +142,7 @@ export interface ISwapNetwork extends ISwapNetworkBase {
   symbol: string;
   shortcode?: string;
   logoURI?: string;
+  backendIndex?: boolean;
   isAllNetworks?: boolean;
 }
 
@@ -571,7 +572,8 @@ export interface IFetchQuoteResult {
   instantRate?: string;
   allowanceResult?: IAllowanceResult;
   approvedInfo?: IApprovedInfo;
-  estimatedTime?: string;
+  estimatedTime?: string | number; // legacy provider value, in seconds
+  estTime?: string | number; // server computed value, in minutes
   isBest?: boolean;
   receivedBest?: boolean;
   minGasCost?: boolean;

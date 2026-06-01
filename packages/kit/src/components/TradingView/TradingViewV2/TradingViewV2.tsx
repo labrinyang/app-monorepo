@@ -31,8 +31,12 @@ import {
 import type { IMarksTimeRange } from './messageHandlers';
 import type { ICustomReceiveHandlerData } from './types';
 import type { IWebViewRef } from '../../WebView/types';
+import type { ITradingViewDisabledFeature } from '../hooks';
 import type { WebViewProps } from 'react-native-webview';
-import type { WebViewNavigation } from 'react-native-webview/lib/WebViewTypes';
+import type {
+  WebViewNavigation,
+  WebViewNavigationEvent,
+} from 'react-native-webview/lib/WebViewTypes';
 
 const MOCK_EMPTY_KLINE_BADGE_POSITION_STYLES = [
   { right: '$2', bottom: '$2' },
@@ -59,6 +63,11 @@ interface IBaseTradingViewV2Props {
   dataSource?: 'websocket' | 'polling';
   accountAddress?: string;
   onTouchScroll?: (deltaY: number) => void;
+  onIndicatorsDialogOpenChange?: (isOpen: boolean) => void;
+  disabledFeatures?: readonly ITradingViewDisabledFeature[];
+  storageNamespace?: string;
+  forceEmptyKLineData?: boolean;
+  emptyKLineDataOnError?: boolean;
 }
 
 export type ITradingViewV2Props = IBaseTradingViewV2Props & IStackStyle;
@@ -84,6 +93,12 @@ export const TradingViewV2 = (props: ITradingViewV2Props & WebViewProps) => {
     dataSource,
     accountAddress,
     onTouchScroll,
+    onIndicatorsDialogOpenChange,
+    disabledFeatures,
+    storageNamespace,
+    forceEmptyKLineData,
+    emptyKLineDataOnError,
+    onLoadStart,
     ...stackStyle
   } = props;
 
@@ -98,6 +113,9 @@ export const TradingViewV2 = (props: ITradingViewV2Props & WebViewProps) => {
     marksTimeRange,
     currentKLineResolution,
     onTouchScroll,
+    onIndicatorsDialogOpenChange,
+    forceEmptyKLineData,
+    emptyKLineDataOnError,
   });
 
   const { isHyperLiquidSource, symbol: hyperLiquidSymbol } =
@@ -118,19 +136,31 @@ export const TradingViewV2 = (props: ITradingViewV2Props & WebViewProps) => {
   );
 
   const additionalParams = useMemo(() => {
+    const finalStorageNamespace =
+      storageNamespace?.trim() ||
+      (useHyperLiquid ? 'market-hyperliquid' : 'market');
+
     return {
       decimal: decimal?.toString(),
       networkId,
       address: tokenAddress,
       symbol: chartSymbol,
       type: 'market',
-      storageNamespace: useHyperLiquid ? 'market-hyperliquid' : 'market',
+      storageNamespace: finalStorageNamespace,
       ...(useHyperLiquid ? { scene: 'market-hyperliquid' } : {}),
     };
-  }, [chartSymbol, decimal, networkId, tokenAddress, useHyperLiquid]);
+  }, [
+    chartSymbol,
+    decimal,
+    networkId,
+    storageNamespace,
+    tokenAddress,
+    useHyperLiquid,
+  ]);
 
   const { finalUrl: tradingViewUrlWithParams } = useTradingViewUrl({
     additionalParams,
+    disabledFeatures,
   });
 
   // OneKey realtime hooks only apply to app-served market candles.
@@ -142,7 +172,9 @@ export const TradingViewV2 = (props: ITradingViewV2Props & WebViewProps) => {
       isVisible &&
       effectiveDataSource !== 'websocket' &&
       !isHyperLiquidSource &&
-      !mockEmptyKLineEnabled,
+      !mockEmptyKLineEnabled &&
+      !forceEmptyKLineData,
+    autoHandleError: emptyKLineDataOnError ? false : undefined,
   });
 
   useAutoTokenDetailUpdate({
@@ -160,13 +192,15 @@ export const TradingViewV2 = (props: ITradingViewV2Props & WebViewProps) => {
       isVisible &&
       effectiveDataSource === 'websocket' &&
       !isHyperLiquidSource &&
-      !mockEmptyKLineEnabled,
+      !mockEmptyKLineEnabled &&
+      !forceEmptyKLineData,
     chartType: '1m',
   });
 
   // Load marks on page enter and refresh when swap transaction succeeds
   useEffect(() => {
     if (!isVisible || !accountAddress || !tokenAddress || !networkId) return;
+    if (forceEmptyKLineData) return;
 
     const refreshMarks = () => {
       const now = Math.floor(Date.now() / 1000);
@@ -246,6 +280,7 @@ export const TradingViewV2 = (props: ITradingViewV2Props & WebViewProps) => {
     chartSymbol,
     mockEmptyKLineEnabled,
     mockEmptyKLineIntervals,
+    forceEmptyKLineData,
     webRef,
   ]);
 
@@ -253,6 +288,34 @@ export const TradingViewV2 = (props: ITradingViewV2Props & WebViewProps) => {
     (event: WebViewNavigation) => handleNavigation(event),
     [handleNavigation],
   );
+
+  const resetIndicatorsDialogOpen = useCallback(() => {
+    onIndicatorsDialogOpenChange?.(false);
+  }, [onIndicatorsDialogOpenChange]);
+
+  const handleLoadStart = useCallback(
+    (event: WebViewNavigationEvent) => {
+      resetIndicatorsDialogOpen();
+      onLoadStart?.(event);
+    },
+    [onLoadStart, resetIndicatorsDialogOpen],
+  );
+
+  const handleWebViewRef = useCallback(
+    (ref: IWebViewRef | null) => {
+      if (!ref) {
+        resetIndicatorsDialogOpen();
+      }
+      webRef.current = ref;
+    },
+    [resetIndicatorsDialogOpen, webRef],
+  );
+
+  useEffect(() => {
+    return () => {
+      resetIndicatorsDialogOpen();
+    };
+  }, [resetIndicatorsDialogOpen]);
 
   const handleMockEmptyKLineBadgePress = useCallback(() => {
     setMockEmptyKLineBadgePositionIndex(
@@ -268,10 +331,9 @@ export const TradingViewV2 = (props: ITradingViewV2Props & WebViewProps) => {
         customReceiveHandler={async (data) => {
           await customReceiveHandler(data as ICustomReceiveHandlerData);
         }}
-        onWebViewRef={(ref) => {
-          webRef.current = ref;
-        }}
+        onWebViewRef={handleWebViewRef}
         allowsBackForwardNavigationGestures={false}
+        onLoadStart={handleLoadStart}
         onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
         displayProgressBar={false}
         pullToRefreshEnabled={false}
@@ -286,10 +348,11 @@ export const TradingViewV2 = (props: ITradingViewV2Props & WebViewProps) => {
     ),
     [
       customReceiveHandler,
+      handleLoadStart,
+      handleWebViewRef,
       onShouldStartLoadWithRequest,
       theme,
       tradingViewUrlWithParams,
-      webRef,
     ],
   );
 

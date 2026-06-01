@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { useIntl } from 'react-intl';
 
-import type { IListViewProps } from '@onekeyhq/components';
+import type { IGetWebRowHeight, IListViewProps } from '@onekeyhq/components';
 import {
   Button,
   SectionList,
@@ -32,10 +32,7 @@ import { EDecodedTxStatus } from '@onekeyhq/shared/types/tx';
 
 import { useAccountData } from '../../hooks/useAccountData';
 import { useBlockExplorerNavigation } from '../../hooks/useBlockExplorerNavigation';
-import {
-  useHasMoreOnChainHistoryAtom,
-  useSearchKeyAtom,
-} from '../../states/jotai/contexts/historyList';
+import { useSearchKeyAtom } from '../../states/jotai/contexts/historyList';
 import { openExplorerAddressUrl } from '../../utils/explorerUtils';
 import useActiveTabDAppInfo from '../../views/DAppConnection/hooks/useActiveTabDAppInfo';
 import { withBrowserProvider } from '../../views/Discovery/pages/Browser/WithBrowserProvider';
@@ -46,6 +43,13 @@ import { EmptyHistory } from '../Empty/EmptyHistory';
 import { HistoryLoadingView } from '../Loading';
 
 import { TxHistoryListItem } from './TxHistoryListItem';
+
+// Measured on web/desktop. Drives react-virtualized's CellMeasurer bypass so
+// rows are positioned synchronously with scroll instead of via async layout.
+// No-op on native (List.tsx Web fast path is not on the native code path).
+const TX_ROW_HEIGHT = 68;
+const SECTION_HEADER_HEIGHT_FIRST = 32; // mt=$0 on first section
+const SECTION_HEADER_HEIGHT_NEXT = 52; // mt=$5 (~20px) on subsequent sections
 
 type IProps = {
   data: IAccountHistoryTx[];
@@ -77,6 +81,10 @@ type IProps = {
   plainMode?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
+  onEndReached?: () => void;
+  onEndReachedThreshold?: number;
+  isLoadingMore?: boolean;
+  hasMore?: boolean;
 };
 
 const ListFooterComponent = ({
@@ -85,16 +93,20 @@ const ListFooterComponent = ({
   walletId,
   indexedAccountId,
   showFooter,
-  hasMoreOnChainHistory,
+  hasItems,
   isSingleAccount,
+  isLoadingMore,
+  hasMore,
 }: {
   accountId?: string;
   networkId?: string;
   walletId?: string;
   indexedAccountId?: string;
   showFooter?: boolean;
-  hasMoreOnChainHistory?: boolean;
+  hasItems?: boolean;
   isSingleAccount?: boolean;
+  isLoadingMore?: boolean;
+  hasMore?: boolean;
 }) => {
   const { result: extensionActiveTabDAppInfo } = useActiveTabDAppInfo();
   const intl = useIntl();
@@ -128,11 +140,26 @@ const ListFooterComponent = ({
     network?.id,
   ]);
 
-  if (
+  if (isLoadingMore) {
+    return (
+      <YStack alignItems="center" justifyContent="center" py="$4" gap="$2">
+        <Spinner size="small" />
+        {addPaddingOnListFooter ? <Stack h="$16" /> : null}
+      </YStack>
+    );
+  }
+
+  // The "view on block explorer" button is the permanent end-of-list affordance
+  // — show it whenever the list has any items and the user has truly bottomed
+  // out (no more pages to fetch locally). Hide while pagination is in flight
+  // (handled above) and on empty / cap-suppressed lists.
+  const showExplorerFooter =
     showFooter &&
-    hasMoreOnChainHistory &&
-    (network?.isAllNetworks || !vaultSettings?.hideBlockExplorer)
-  ) {
+    hasItems &&
+    !hasMore &&
+    (network?.isAllNetworks || !vaultSettings?.hideBlockExplorer);
+
+  if (showExplorerFooter) {
     return (
       <>
         <YStack
@@ -284,10 +311,13 @@ function BaseTxHistoryListView(props: IProps) {
     tokenMap,
     ref,
     plainMode,
+    onEndReached,
+    onEndReachedThreshold,
+    isLoadingMore,
+    hasMore,
   } = props;
 
   const [searchKey] = useSearchKeyAtom();
-  const [hasMoreOnChainHistory] = useHasMoreOnChainHistoryAtom();
 
   const filteredHistory = useMemo(
     () =>
@@ -392,6 +422,36 @@ function BaseTxHistoryListView(props: IProps) {
     return inTabList ? Tabs.SectionList : SectionList;
   }, [inTabList]);
 
+  // Web-only fast path: TxHistoryListItem and the section header have known
+  // heights, so we can skip react-virtualized's CellMeasurer entirely on the
+  // desktop/web Tabs.SectionList path. This is what eliminates the visual
+  // blank during fast scroll, where rows were rendering at stale absolute
+  // positions because CellMeasurer's totalHeight estimate kept oscillating.
+  const getWebRowHeight = useMemo<
+    IGetWebRowHeight<IAccountHistoryTx> | undefined
+  >(
+    () =>
+      inTabList && !platformEnv.isNative
+        ? (info) => {
+            if (info.type === 'section-header') {
+              return info.sectionIndex === 0
+                ? SECTION_HEADER_HEIGHT_FIRST
+                : SECTION_HEADER_HEIGHT_NEXT;
+            }
+            if (info.type === 'section-item') {
+              if (info.item?.decodedTx?.status === EDecodedTxStatus.Pending) {
+                return undefined;
+              }
+              return TX_ROW_HEIGHT;
+            }
+            // header / footer (loading / "load more" buttons) aren't a fixed
+            // height — let CellMeasurer handle them.
+            return undefined;
+          }
+        : undefined,
+    [inTabList],
+  );
+
   const itemCounts = useMemo(() => {
     return sections.reduce((acc, section) => acc + section.data.length, 0);
   }, [sections]);
@@ -479,21 +539,26 @@ function BaseTxHistoryListView(props: IProps) {
       ListFooterComponentStyle={resolvedListFooterComponentStyle as any}
       renderItem={renderItem}
       renderSectionHeader={renderSectionHeader as any}
+      onEndReached={onEndReached}
+      onEndReachedThreshold={onEndReachedThreshold ?? 0.2}
       ListFooterComponent={
         <ListFooterComponent
           showFooter={showFooter}
-          hasMoreOnChainHistory={
-            sections.length > 0 ? hasMoreOnChainHistory : false
-          }
+          hasItems={sections.length > 0}
           accountId={accountId}
           networkId={networkId}
           walletId={walletId}
           indexedAccountId={indexedAccountId}
           isSingleAccount={isSingleAccount}
+          isLoadingMore={isLoadingMore}
+          hasMore={hasMore}
         />
       }
       ListHeaderComponent={ListHeaderComponent}
-      keyExtractor={(tx, index) => tx.id || index.toString(10)}
+      keyExtractor={(tx: IAccountHistoryTx, index: number) =>
+        tx.id || index.toString(10)
+      }
+      {...((getWebRowHeight ? { getWebRowHeight } : {}) as any)}
     />
   );
 }

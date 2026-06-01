@@ -35,8 +35,10 @@ import AddressTypeSelector from '@onekeyhq/kit/src/components/AddressTypeSelecto
 import { ListItem } from '@onekeyhq/kit/src/components/ListItem';
 import { NetworkAvatarBase } from '@onekeyhq/kit/src/components/NetworkAvatar';
 import useAppNavigation from '@onekeyhq/kit/src/hooks/useAppNavigation';
+import { useBotWalletDeactivatedStatus } from '@onekeyhq/kit/src/hooks/useBotWalletDeactivatedStatus';
 import { useCopyAccountAddress } from '@onekeyhq/kit/src/hooks/useCopyAccountAddress';
 import { usePromiseResult } from '@onekeyhq/kit/src/hooks/usePromiseResult';
+import { showBotWalletDisabledToast } from '@onekeyhq/kit/src/utils/botWalletDisabledToast';
 import { openExplorerAddressUrl } from '@onekeyhq/kit/src/utils/explorerUtils';
 import { useFuseSearch } from '@onekeyhq/kit/src/views/ChainSelector/hooks/useFuseSearch';
 import type { IAllNetworksDBStruct } from '@onekeyhq/kit-bg/src/dbs/simple/entity/SimpleDbEntityAllNetworks';
@@ -137,6 +139,16 @@ function SingleWalletAddressListItem({ network }: { network: IServerNetwork }) {
     walletId: walletId ?? '',
   });
 
+  const { isBotWallet, isBotWalletDeactivated } = useBotWalletDeactivatedStatus(
+    {
+      walletId,
+    },
+  );
+  const isBotWalletAddressBlocked =
+    isBotWallet &&
+    isBotWalletDeactivated &&
+    actionType !== EWalletAddressActionType.ViewInExplorer;
+
   const subtitle = useMemo(() => {
     if (account) {
       if (networkUtils.isLightningNetworkByNetworkId(network.id)) {
@@ -179,6 +191,11 @@ function SingleWalletAddressListItem({ network }: { network: IServerNetwork }) {
         networkId: network.id,
         address: othersWalletAddress,
       });
+      return;
+    }
+
+    if (isBotWalletAddressBlocked) {
+      showBotWalletDisabledToast(account ? 'copyAddress' : 'receive');
       return;
     }
 
@@ -265,6 +282,7 @@ function SingleWalletAddressListItem({ network }: { network: IServerNetwork }) {
     copyAccountAddress,
     isOthersWallet,
     othersWalletAddress,
+    isBotWalletAddressBlocked,
   ]);
 
   const avatar = useMemo(
@@ -294,7 +312,8 @@ function SingleWalletAddressListItem({ network }: { network: IServerNetwork }) {
             primary={
               <XStack alignItems="center" gap="$2">
                 <SizableText size="$bodyLgMedium">{network.name}</SizableText>
-                {networkUtils
+                {!isBotWalletAddressBlocked &&
+                networkUtils
                   .getDefaultDeriveTypeVisibleNetworks()
                   .includes(network.id) ? (
                   <AddressTypeSelector
@@ -335,6 +354,7 @@ function SingleWalletAddressListItem({ network }: { network: IServerNetwork }) {
         renderAvatar={avatar}
         onPress={onPress}
         disabled={loading}
+        opacity={isBotWalletAddressBlocked ? 0.5 : 1}
       >
         {loading ? (
           <Stack p="$0.5">
@@ -357,6 +377,7 @@ function SingleWalletAddressListItem({ network }: { network: IServerNetwork }) {
       refreshLocalData,
       subtitle,
       walletId,
+      isBotWalletAddressBlocked,
     ],
   );
 }

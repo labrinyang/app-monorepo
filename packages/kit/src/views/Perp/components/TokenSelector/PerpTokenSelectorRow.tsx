@@ -4,6 +4,7 @@ import {
   memo,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
 } from 'react';
 
@@ -35,11 +36,16 @@ import {
 } from '@onekeyhq/kit-bg/src/states/jotai/atoms';
 import { OneKeyLocalError } from '@onekeyhq/shared/src/errors';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
+import { markPerpsColdStartPerfOnce } from '@onekeyhq/shared/src/performance/perpsColdStartPerf';
 import {
   NUMBER_FORMATTER,
   formatDisplayNumber,
   formatLocalizedNumberString,
 } from '@onekeyhq/shared/src/utils/numberUtils';
+import {
+  reconcileTokenSelectorFavoritesOrder,
+  updateTokenSelectorFavoriteCoins,
+} from '@onekeyhq/shared/src/utils/perpsTokenSelectorFavorites';
 import {
   formatSpotPairDisplayName,
   formatSpotPriceToValid,
@@ -228,56 +234,54 @@ export const FavoriteButton = memo(
       : perpFavs.favorites.includes(coin);
 
     const handleToggle = useCallback(() => {
-      const mode: 'perp' | 'spot' = isSpot ? 'spot' : 'perp';
-      const toggleFavorites = (prev: string[]) => {
-        const removing = prev.includes(coin);
-        return removing ? prev.filter((f) => f !== coin) : [...prev, coin];
-      };
-      const wasFavorited = isSpot
-        ? spotFavs.favorites.includes(coin)
-        : perpFavs.favorites.includes(coin);
+      const mode = isSpot ? 'spot' : 'perp';
+      const action = isFavorite ? 'remove' : 'add';
+      const updateFavorites = (favorites: string[]) =>
+        updateTokenSelectorFavoriteCoins({
+          favorites,
+          coin,
+          action,
+        }).favorites;
+
       if (isSpot) {
         setSpotFavs((prev) => ({
           ...prev,
-          favorites: toggleFavorites(prev.favorites),
+          favorites: updateFavorites(prev.favorites),
         }));
       } else {
-        setPerpFavs((prev) => {
-          const removing = prev.favorites.includes(coin);
-          void backgroundApiProxy.serviceMarketV2.syncToMarketWatchList({
-            coin,
-            action: removing ? 'remove' : 'add',
-          });
-          return {
-            ...prev,
-            favorites: toggleFavorites(prev.favorites),
-          };
-        });
+        setPerpFavs((prev) => ({
+          ...prev,
+          favorites: updateFavorites(prev.favorites),
+        }));
       }
-      // FavoritesBar's passive sync would eventually backfill, but writing
-      // directly here avoids a one-frame flicker on add/remove.
-      setFavoritesOrder((prev) => {
-        if (wasFavorited) {
-          return {
-            sequence: prev.sequence.filter(
-              (e) => !(e.mode === mode && e.coinName === coin),
-            ),
-          };
-        }
-        if (prev.sequence.some((e) => e.mode === mode && e.coinName === coin)) {
-          return prev;
-        }
-        return {
-          sequence: [...prev.sequence, { mode, coinName: coin }],
-        };
+
+      const nextPerpFavorites = isSpot
+        ? perpFavs.favorites
+        : updateFavorites(perpFavs.favorites);
+      const nextSpotFavorites = isSpot
+        ? updateFavorites(spotFavs.favorites)
+        : spotFavs.favorites;
+      setFavoritesOrder((prev) => ({
+        sequence: reconcileTokenSelectorFavoritesOrder({
+          sequence: prev.sequence,
+          perpFavorites: nextPerpFavorites,
+          spotFavorites: nextSpotFavorites,
+        }),
+      }));
+
+      void backgroundApiProxy.serviceHyperliquid.updateTokenSelectorFavorite({
+        mode,
+        coin,
+        action,
       });
     }, [
       coin,
+      isFavorite,
       isSpot,
+      perpFavs.favorites,
+      setFavoritesOrder,
       setPerpFavs,
       setSpotFavs,
-      setFavoritesOrder,
-      perpFavs.favorites,
       spotFavs.favorites,
     ]);
 
@@ -1308,6 +1312,15 @@ const PerpTokenSelectorRowPerps = memo(
         desktopLayout,
       ],
     );
+
+    useEffect(() => {
+      if (!isLoading && assetCtx?.markPrice && assetCtx.markPrice !== '0') {
+        markPerpsColdStartPerfOnce('ui_token_selector_perp_row_ready', {
+          tokenName,
+          markPrice: assetCtx.markPrice,
+        });
+      }
+    }, [assetCtx?.markPrice, isLoading, tokenName]);
 
     if (!tokenName) {
       return null;

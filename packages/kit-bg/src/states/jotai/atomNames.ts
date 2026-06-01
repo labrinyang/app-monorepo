@@ -62,6 +62,7 @@ export enum EAtomNames {
   keylessDialogAtom = 'keylessDialogAtom',
   keylessPinConfirmStatusAtom = 'keylessPinConfirmStatusAtom',
   keylessLastCancelVerifyPinTimeAtom = 'keylessLastCancelVerifyPinTimeAtom',
+  keylessBackendShareV2MigrationPersistAtom = 'keylessBackendShareV2MigrationPersistAtom',
   accountSelectorAccountsListIsLoadingAtom = 'accountSelectorAccountsListIsLoadingAtom',
   accountSelectorStatusAtom = 'accountSelectorStatusAtom',
   allNetworksPersistAtom = 'allNetworksPersistAtom',
@@ -72,6 +73,7 @@ export enum EAtomNames {
   perpsActiveAccountAtom = 'perpsActiveAccountAtom',
   perpsActiveAccountRefreshHookAtom = 'perpsActiveAccountRefreshHookAtom',
   perpsActiveAccountSummaryAtom = 'perpsActiveAccountSummaryAtom',
+  perpsAccountDisplaySnapshotAtom = 'perpsAccountDisplaySnapshotAtom',
   perpsActiveAccountStatusInfoAtom = 'perpsActiveAccountStatusInfoAtom',
   perpsAccountLoadingInfoAtom = 'perpsAccountLoadingInfoAtom',
   perpsActiveAssetAtom = 'perpsActiveAssetAtom',
@@ -140,6 +142,32 @@ export const atomsConfig: Partial<
     deepCompare: true,
   },
   [EAtomNames.primePersistAtom]: {
+    mergeInitialValue: false,
+  },
+  // These Perps states are written as complete snapshots. Lodash merge keeps
+  // old array tails and ignores undefined, which can resurrect stale fields.
+  [EAtomNames.perpsActiveAssetAtom]: {
+    mergeInitialValue: false,
+  },
+  [EAtomNames.perpsAccountDisplaySnapshotAtom]: {
+    mergeInitialValue: false,
+  },
+  [EAtomNames.spotActiveAssetAtom]: {
+    mergeInitialValue: false,
+  },
+  [EAtomNames.perpsCommonConfigPersistAtom]: {
+    mergeInitialValue: false,
+  },
+  [EAtomNames.perpTokenFavoritesPersistAtom]: {
+    mergeInitialValue: false,
+  },
+  [EAtomNames.spotTokenFavoritesPersistAtom]: {
+    mergeInitialValue: false,
+  },
+  [EAtomNames.perpsFavoritesOrderPersistAtom]: {
+    mergeInitialValue: false,
+  },
+  [EAtomNames.perpsDepositOrderAtom]: {
     mergeInitialValue: false,
   },
 };

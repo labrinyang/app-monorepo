@@ -77,7 +77,12 @@ import {
 } from '../../hooks';
 import { PerpsAccountSelectorProviderMirror } from '../../PerpsAccountSelectorProviderMirror';
 import { PerpsProviderMirror } from '../../PerpsProviderMirror';
-import { getTokenSelectorFavoriteItems } from '../../utils/tokenSelectorFavorites';
+import {
+  getTokenSelectorFavoriteItems,
+  getTokenSelectorFavoriteSortEntry,
+  getTokenSelectorListItemKey,
+  sortTokenSelectorFavoriteItems,
+} from '../../utils/tokenSelectorFavorites';
 import {
   markTokenSelectorPerfMeasure,
   startTokenSelectorPerfMeasure,
@@ -110,6 +115,17 @@ function hasSpotVolumeData(
     (ctx) => Number(ctx?.dayNtlVlm || 0) > 0,
   );
 }
+
+// Android FlashList can preserve the pre-sort anchor, which defeats the
+// selector's explicit scroll-to-top contract.
+const androidSortScrollBehaviorProps: Record<string, unknown> =
+  platformEnv.isNativeAndroid
+    ? {
+        maintainVisibleContentPosition: {
+          disabled: true,
+        },
+      }
+    : {};
 
 const PrimaryTabItem = memo(
   ({
@@ -742,6 +758,22 @@ function MobileTokenSelectorModal({
         perpItems: perpSortedList,
         spotItems: spotFavoriteSortedList,
       });
+      if (sortField) {
+        result = sortTokenSelectorFavoriteItems({
+          items: result,
+          sortField,
+          sortDirection,
+          getSortEntry: (item, order) =>
+            getTokenSelectorFavoriteSortEntry({
+              item,
+              order,
+              spotPriceSnapshot,
+              spotMarketCaps,
+              perpAssetCtxsByDex: ctxSnapshotRef.current,
+              computePerpSortValues: computeSortValues,
+            }),
+        });
+      }
     } else if (isPerpTokenSelectorPerpsTab(displayActiveTab)) {
       result = perpSortedList;
     } else {
@@ -788,10 +820,13 @@ function MobileTokenSelectorModal({
     categoryTabs,
     favoritesOrder.sequence,
     favoriteItems,
+    computeSortValues,
     perpSortedList,
     selectorConfig?.direction,
     selectorConfig?.field,
     spotFavoriteSortedList,
+    spotMarketCaps,
+    spotPriceSnapshot,
     spotSortedList,
     searchQuery,
   ]);
@@ -805,10 +840,7 @@ function MobileTokenSelectorModal({
   });
 
   const keyExtractor = useCallback(
-    (item: { dexIndex: number; assetId?: number; index: number }) => {
-      const assetId = item.assetId ?? item.index;
-      return `${item.dexIndex}-${assetId}`;
-    },
+    (item: ITokenSelectorListItem) => getTokenSelectorListItemKey(item),
     [],
   );
 
@@ -1030,6 +1062,7 @@ function MobileTokenSelectorModal({
               decelerationRate="normal"
               showsVerticalScrollIndicator
               nestedScrollEnabled={platformEnv.isNativeAndroid}
+              {...androidSortScrollBehaviorProps}
               contentContainerStyle={{
                 paddingBottom: 10,
               }}

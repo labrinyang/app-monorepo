@@ -25,6 +25,7 @@ export enum EPrimePages {
   OneKeyId = 'OneKeyId',
   KeylessWallet = 'KeylessWallet',
   PrimeMyOrders = 'PrimeMyOrders',
+  OneKeyIdProfileEdit = 'OneKeyIdProfileEdit',
 }
 
 export enum EPrimeFeatures {
@@ -39,6 +40,7 @@ export enum EPrimeFeatures {
   DAppTranslate = 'DAppTranslate',
   BlockaidSiteScan = 'BlockaidSiteScan',
   ExtendedHistory = 'ExtendedHistory',
+  ReceiveRiskMonitoring = 'ReceiveRiskMonitoring',
 }
 
 export type IPrimeParamList = {
@@ -77,4 +79,5 @@ export type IPrimeParamList = {
     mode?: EOnboardingV2KeylessWalletCreationMode;
   };
   [EPrimePages.PrimeMyOrders]: undefined;
+  [EPrimePages.OneKeyIdProfileEdit]: undefined;
 };
