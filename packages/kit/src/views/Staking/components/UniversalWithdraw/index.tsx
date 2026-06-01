@@ -168,6 +168,7 @@ type IUniversalWithdrawProps = {
     token?: IToken;
   };
   currentAllowance?: string;
+  approveType?: EApproveType;
   pendleSlippage?: number;
   initialWithdrawType?: IEarnWithdrawType;
   receiptTokenRate?: string;
@@ -337,6 +338,7 @@ export function UniversalWithdraw({
   onQuoteRefreshingChange,
   approveTarget,
   currentAllowance = '0',
+  approveType = EApproveType.Legacy,
   pendleSlippage,
   initialWithdrawType,
   receiptTokenRate,
@@ -531,7 +533,7 @@ export function UniversalWithdraw({
     tokenAddress: approveTarget?.token?.address ?? '',
     spenderAddress: approveTarget?.spenderAddress ?? '',
     initialValue: currentAllowance,
-    approveType: EApproveType.Legacy,
+    approveType,
   });
 
   const isFocus = useIsFocused();
@@ -1733,7 +1735,7 @@ export function UniversalWithdraw({
       {beforeFooter}
       {shouldShowPendleWithdrawProgress ? (
         <StakeProgress
-          approveType={EApproveType.Legacy}
+          approveType={approveType}
           currentStep={
             shouldApprove
               ? EStakeProgressStep.approve

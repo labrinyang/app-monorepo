@@ -35,6 +35,7 @@ import { defaultLogger } from '@onekeyhq/shared/src/logger/logger';
 import { EModalRoutes, EModalStakingRoutes } from '@onekeyhq/shared/src/routes';
 import earnUtils from '@onekeyhq/shared/src/utils/earnUtils';
 import {
+  EApproveType,
   type EBorrowActionsEnum,
   EEarnLabels,
   type IBorrowAsset,
@@ -368,7 +369,7 @@ export const WithdrawSection = ({
         backendApproveType: useBorrowApi
           ? effectiveBorrowApproveInfo?.approveType
           : isNativeProvider
-            ? protocolInfo?.withdrawApprove?.approveType
+            ? EApproveType.Legacy
             : protocolInfo?.approve?.approveType,
       }),
     [
@@ -379,7 +380,6 @@ export const WithdrawSection = ({
       networkId,
       providerName,
       protocolInfo?.approve?.approveType,
-      protocolInfo?.withdrawApprove?.approveType,
       useBorrowApi,
     ],
   );
@@ -1411,6 +1411,7 @@ export const WithdrawSection = ({
           onQuoteReset={onQuoteReset}
           refreshKey={refreshKey}
           onQuoteRefreshingChange={onQuoteRefreshingChange}
+          approveType={effectiveApproveType}
           approveTarget={approveTarget}
           currentAllowance={initialAllowanceResult?.allowanceParsed}
           receiptTokenRate={
