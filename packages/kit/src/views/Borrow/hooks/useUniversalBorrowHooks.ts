@@ -723,3 +723,127 @@ export function useUniversalBorrowClaim({
     [accountId, networkId, navigationToTxConfirm],
   );
 }
+
+export function useUniversalBorrowSetEMode({
+  networkId,
+  accountId,
+}: {
+  networkId: string;
+  accountId: string;
+}) {
+  const { navigationToTxConfirm } = useSignatureConfirm({
+    accountId,
+    networkId,
+  });
+  return useCallback(
+    async ({
+      provider,
+      marketAddress,
+      eModeId,
+      stakingInfo,
+      onSuccess,
+      onFail,
+    }: {
+      provider: string;
+      marketAddress: string;
+      eModeId: number;
+      stakingInfo?: IStakingInfo;
+      onSuccess?: IModalSendParamList['SendConfirm']['onSuccess'];
+      onFail?: IModalSendParamList['SendConfirm']['onFail'];
+    }) => {
+      const resp =
+        await backgroundApiProxy.serviceStaking.borrowBuildSetEModeTransaction({
+          networkId,
+          accountId,
+          provider,
+          marketAddress,
+          eModeId,
+        });
+      const stakingInfoWithOrderId = attachBorrowOrderId({
+        stakingInfo,
+        orderId: resp.orderId,
+      });
+      await navigationToTxConfirm({
+        encodedTx: parseBorrowEncodedTx(resp.tx),
+        stakingInfo: stakingInfoWithOrderId,
+        onSuccess: async (data) => {
+          await handleBorrowSuccess({
+            data,
+            orderId: resp.orderId,
+            networkId,
+            stakingInfo: stakingInfoWithOrderId,
+            onSuccess,
+          });
+        },
+        onFail,
+      });
+    },
+    [accountId, networkId, navigationToTxConfirm],
+  );
+}
+
+export function useUniversalBorrowSetCollateral({
+  networkId,
+  accountId,
+}: {
+  networkId: string;
+  accountId: string;
+}) {
+  const { navigationToTxConfirm } = useSignatureConfirm({
+    accountId,
+    networkId,
+  });
+  return useCallback(
+    async ({
+      provider,
+      marketAddress,
+      reserveAddress,
+      useAsCollateral,
+      eModeId,
+      stakingInfo,
+      onSuccess,
+      onFail,
+    }: {
+      provider: string;
+      marketAddress: string;
+      reserveAddress: string;
+      useAsCollateral: boolean;
+      eModeId?: number;
+      stakingInfo?: IStakingInfo;
+      onSuccess?: IModalSendParamList['SendConfirm']['onSuccess'];
+      onFail?: IModalSendParamList['SendConfirm']['onFail'];
+    }) => {
+      const resp =
+        await backgroundApiProxy.serviceStaking.borrowBuildSetCollateralTransaction(
+          {
+            networkId,
+            accountId,
+            provider,
+            marketAddress,
+            reserveAddress,
+            useAsCollateral,
+            eModeId,
+          },
+        );
+      const stakingInfoWithOrderId = attachBorrowOrderId({
+        stakingInfo,
+        orderId: resp.orderId,
+      });
+      await navigationToTxConfirm({
+        encodedTx: parseBorrowEncodedTx(resp.tx),
+        stakingInfo: stakingInfoWithOrderId,
+        onSuccess: async (data) => {
+          await handleBorrowSuccess({
+            data,
+            orderId: resp.orderId,
+            networkId,
+            stakingInfo: stakingInfoWithOrderId,
+            onSuccess,
+          });
+        },
+        onFail,
+      });
+    },
+    [accountId, networkId, navigationToTxConfirm],
+  );
+}
