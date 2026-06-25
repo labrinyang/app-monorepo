@@ -46,6 +46,8 @@ import type {
   IBorrowApyHistoryItem,
   IBorrowAssetsList,
   IBorrowCheckAmount,
+  IBorrowEModeStatus,
+  IBorrowEModeSwitchCheck,
   IBorrowEstimateFee,
   IBorrowFaqList,
   IBorrowHealthFactor,
@@ -2805,6 +2807,98 @@ class ServiceStaking extends ServiceBase {
         accountAddress,
       },
     });
+    return response.data.data;
+  }
+
+  @backgroundMethod()
+  async getBorrowEModeStatus(params: {
+    networkId: string;
+    provider: string;
+    marketAddress: string;
+    accountId: string;
+    reserveAddress?: string;
+  }) {
+    const { accountId, ...rest } = params;
+    const accountAddress =
+      await this.backgroundApi.serviceAccount.getAccountAddressForApi({
+        networkId: params.networkId,
+        accountId,
+      });
+    const client = await this.getClient(EServiceEndpointEnum.Earn);
+    const response = await client.get<{ data: IBorrowEModeStatus }>(
+      '/earn/v1/borrow/e-mode/status',
+      { params: { ...rest, accountAddress } },
+    );
+    return response.data.data;
+  }
+
+  @backgroundMethod()
+  async borrowSwitchCheckEMode(params: {
+    networkId: string;
+    provider: string;
+    marketAddress: string;
+    accountId: string;
+    targetEModeId: number;
+  }) {
+    const { accountId, ...rest } = params;
+    const accountAddress =
+      await this.backgroundApi.serviceAccount.getAccountAddressForApi({
+        networkId: params.networkId,
+        accountId,
+      });
+    const client = await this.getClient(EServiceEndpointEnum.Earn);
+    // switch-check is an envelope { code, message, data }
+    const response = await client.post<{
+      code: number;
+      message: string;
+      data: IBorrowEModeSwitchCheck;
+    }>('/earn/v1/borrow/e-mode/switch-check', { ...rest, accountAddress });
+    return response.data;
+  }
+
+  @backgroundMethod()
+  async borrowBuildSetEModeTransaction(params: {
+    networkId: string;
+    provider: string;
+    marketAddress: string;
+    accountId: string;
+    eModeId: number;
+  }) {
+    const { accountId, ...rest } = params;
+    const accountAddress =
+      await this.backgroundApi.serviceAccount.getAccountAddressForApi({
+        networkId: params.networkId,
+        accountId,
+      });
+    const client = await this.getClient(EServiceEndpointEnum.Earn);
+    const response = await client.post<{ data: IBorrowUnsignedTransaction }>(
+      '/earn/v1/borrow/build-set-emode-transaction',
+      { ...rest, accountAddress },
+    );
+    return response.data.data;
+  }
+
+  @backgroundMethod()
+  async borrowBuildSetCollateralTransaction(params: {
+    networkId: string;
+    provider: string;
+    marketAddress: string;
+    accountId: string;
+    reserveAddress: string;
+    useAsCollateral: boolean;
+    eModeId?: number;
+  }) {
+    const { accountId, ...rest } = params;
+    const accountAddress =
+      await this.backgroundApi.serviceAccount.getAccountAddressForApi({
+        networkId: params.networkId,
+        accountId,
+      });
+    const client = await this.getClient(EServiceEndpointEnum.Earn);
+    const response = await client.post<{ data: IBorrowUnsignedTransaction }>(
+      '/earn/v1/borrow/build-set-collateral-transaction',
+      { ...rest, accountAddress },
+    );
     return response.data.data;
   }
 
