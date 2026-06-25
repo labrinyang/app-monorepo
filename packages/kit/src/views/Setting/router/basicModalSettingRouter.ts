@@ -65,6 +65,11 @@ const PageDevUnitTests = LazyLoadPage(
     import('@onekeyhq/kit/src/views/Setting/pages/DevUnitTests/PageDevUnitTests'),
 );
 
+const DevSesHardenRuntimeCheck = LazyLoadPage(
+  () =>
+    import('@onekeyhq/kit/src/views/Setting/pages/DevSesHardenRuntimeCheck'),
+);
+
 const DesktopApiProxyTestDevSettings = LazyLoadPage(
   () =>
     import('@onekeyhq/kit/src/views/Setting/pages/Tab/DevSettingsSection/DesktopApiProxyTestDevSettings'),
@@ -98,6 +103,11 @@ const KeylessWalletGallery = LazyLoadPage(
 const StorageGallery = LazyLoadPage(
   () =>
     import('@onekeyhq/kit/src/views/Developer/pages/Gallery/Components/stories/StorageGallery'),
+);
+
+const LocalSecretEnvelopeSelfTest = LazyLoadPage(
+  () =>
+    import('@onekeyhq/kit/src/views/Setting/pages/LocalSecretEnvelopeSelfTest'),
 );
 
 const ExportCustomNetworkConfig = LazyLoadPage(
@@ -171,6 +181,10 @@ const DevSplitBundleTest = LazyLoadPage(
   () => import('@onekeyhq/kit/src/views/Setting/pages/DevSplitBundleTest'),
 );
 
+const DevDrawingOrderStress = LazyLoadPage(
+  () => import('@onekeyhq/kit/src/views/Setting/pages/DevDrawingOrderStress'),
+);
+
 export const BasicModalSettingStack: IModalFlowNavigatorConfig<
   EModalSettingRoutes | EModalAddressBookRoutes,
   IModalSettingParamList & IModalAddressBookParamList
@@ -237,6 +251,10 @@ export const BasicModalSettingStack: IModalFlowNavigatorConfig<
     component: PageDevUnitTests,
   },
   {
+    name: EModalSettingRoutes.SettingDevSesHardenRuntimeCheckModal,
+    component: DevSesHardenRuntimeCheck,
+  },
+  {
     name: EModalSettingRoutes.SettingDevDesktopApiProxyTestModal,
     component: DesktopApiProxyTestDevSettings,
   },
@@ -263,6 +281,10 @@ export const BasicModalSettingStack: IModalFlowNavigatorConfig<
   {
     name: EModalSettingRoutes.SettingDevStorageGalleryModal,
     component: StorageGallery,
+  },
+  {
+    name: EModalSettingRoutes.SettingDevLocalSecretEnvelopeSelfTestModal,
+    component: LocalSecretEnvelopeSelfTest,
   },
   {
     name: EModalSettingRoutes.SettingExportCustomNetworkConfig,
@@ -324,6 +346,10 @@ export const BasicModalSettingStack: IModalFlowNavigatorConfig<
   {
     name: EModalSettingRoutes.SettingDevSplitBundleTestModal,
     component: DevSplitBundleTest,
+  },
+  {
+    name: EModalSettingRoutes.SettingDevDrawingOrderStressModal,
+    component: DevDrawingOrderStress,
   },
   ...(ModalAddressBookRouter as IModalFlowNavigatorConfig<
     EModalSettingRoutes | EModalAddressBookRoutes,

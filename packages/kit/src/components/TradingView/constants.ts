@@ -1,5 +1,7 @@
 export const TRADING_VIEW_DISABLED_FEATURES = {
-  FOOTER: 'footer',
+  TIMEFRAME_SELECTOR: 'timeframeSelector',
+  TIME_SCALE: 'timeScale',
+  PRICE_SCALE: 'priceScale',
   PRICE_MARKET_CAP_TOGGLE: 'priceMarketCapToggle',
   INDICATORS: 'indicators',
   SETTINGS: 'settings',
@@ -8,6 +10,7 @@ export const TRADING_VIEW_DISABLED_FEATURES = {
   FULLSCREEN: 'fullscreen',
   LAYOUT_TOGGLE: 'layoutToggle',
   DRAWING_TOOLBAR: 'drawingToolbar',
+  VOLUME: 'volume',
 } as const;
 
 export const TRADING_VIEW_DISABLED_FEATURES_URL_PARAM = 'disabledFeatures';

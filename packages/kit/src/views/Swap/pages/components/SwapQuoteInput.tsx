@@ -37,7 +37,7 @@ const SwapQuoteInput = ({
 }: ISwapQuoteInputProps) => {
   const [fromInputAmount, setFromInputAmount] = useSwapFromTokenAmountAtom();
   const [toInputAmount, setToInputAmount] = useSwapToTokenAmountAtom();
-  const { isWaitingActionableQuote } = useSwapQuoteProgressState();
+  const { isInputQuoteLoading } = useSwapQuoteProgressState();
   const [fromToken] = useSwapSelectFromTokenAtom();
   const [toToken] = useSwapSelectToTokenAtom();
   const [swapTokenDetailLoading] = useSwapSelectTokenDetailFetchingAtom();
@@ -62,7 +62,7 @@ const SwapQuoteInput = ({
       <SwapInputContainer
         token={fromToken}
         direction={ESwapDirectionType.FROM}
-        inputLoading={isWaitingActionableQuote}
+        inputLoading={isInputQuoteLoading}
         selectTokenLoading={selectLoading}
         onAmountChange={(value) => {
           if (validateAmountInput(value, fromToken?.decimals)) {
@@ -77,6 +77,7 @@ const SwapQuoteInput = ({
         onBalanceMaxPress={onBalanceMaxPress}
         onSelectToken={onSelectToken}
         balance={fromTokenBalance}
+        balanceLoading={swapTokenDetailLoading.from}
       />
       <Stack
         borderRadius="$full"
@@ -109,7 +110,7 @@ const SwapQuoteInput = ({
       </Stack>
       <SwapInputContainer
         token={toToken}
-        inputLoading={isWaitingActionableQuote}
+        inputLoading={isInputQuoteLoading}
         selectTokenLoading={selectLoading}
         direction={ESwapDirectionType.TO}
         onAmountChange={(value) => {
@@ -123,6 +124,7 @@ const SwapQuoteInput = ({
         amountValue={toInputAmount.value}
         onSelectToken={onSelectToken}
         balance={toTokenBalance}
+        balanceLoading={swapTokenDetailLoading.to}
       />
     </YStack>
   );

@@ -359,6 +359,9 @@ export const WithdrawSection = ({
     providerName,
     protocolInfo?.vault,
   ]);
+  const backendApproveType = isNativeProvider
+    ? EApproveType.Legacy
+    : effectiveBorrowApproveInfo?.approveType;
   const effectiveApproveType = useMemo(
     () =>
       earnUtils.resolveEarnApproveType({
@@ -366,21 +369,14 @@ export const WithdrawSection = ({
         networkId,
         tokenIsNative: approvalToken?.isNative,
         approveSpenderAddress,
-        backendApproveType: useBorrowApi
-          ? effectiveBorrowApproveInfo?.approveType
-          : isNativeProvider
-            ? EApproveType.Legacy
-            : protocolInfo?.approve?.approveType,
+        backendApproveType,
       }),
     [
       approvalToken?.isNative,
       approveSpenderAddress,
-      effectiveBorrowApproveInfo?.approveType,
-      isNativeProvider,
+      backendApproveType,
       networkId,
       providerName,
-      protocolInfo?.approve?.approveType,
-      useBorrowApi,
     ],
   );
 

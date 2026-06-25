@@ -34,6 +34,7 @@ export enum EOnChainHistoryTxType {
   Send = 'Send',
   Receive = 'Receive',
   Approve = 'Approve',
+  PrivateSend = 'PrivateSend',
 }
 
 export type IOnChainHistoryTxApprove = {
@@ -104,6 +105,10 @@ export type IOnChainHistoryTx = {
   label: string;
   confirmations?: number;
   block?: number;
+  // Estimated time/blocks until the next confirmation. BTC-family only;
+  // EVM and most other chains return 0 (no ETA truth). See OK-56372.
+  confirmationETASeconds?: number;
+  confirmationETABlocks?: number;
   inputs?: IOnChainHistoryTxUTXOInput[];
   outputs?: IOnChainHistoryTxUTXOOutput[];
 
@@ -120,6 +125,18 @@ export type IOnChainHistoryTx = {
 
   // TODO: on chain swap info
   swapInfo?: any;
+
+  isPrivateSend?: boolean;
+  privateSend?: {
+    orderId?: string;
+    rocketXOrderId?: string;
+    payinAddress?: string;
+    provider?: string;
+    providerName?: string;
+    providerLogo?: string;
+    supportUrl?: string;
+    originalRecipient?: string;
+  };
 
   // Lightning network attributes
   description?: string;
@@ -158,6 +175,9 @@ export type IAccountHistoryTx = {
   key?: string;
 
   isLocalCreated?: boolean;
+
+  displayStatus?: EDecodedTxStatus;
+  displayStatusSource?: 'privateSendOrder';
 
   replacedPrevId?: string; // cancel speedUp replacedId
   replacedNextId?: string;

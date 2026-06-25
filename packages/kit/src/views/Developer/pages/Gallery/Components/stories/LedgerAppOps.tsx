@@ -16,8 +16,7 @@ import {
   YStack,
 } from '@onekeyhq/components';
 import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
-import { appEventBus } from '@onekeyhq/shared/src/eventBus/appEventBus';
-import { EAppEventBusNames } from '@onekeyhq/shared/src/eventBus/appEventBusNames';
+import { useThirdPartyAppInstallAtom } from '@onekeyhq/kit-bg/src/states/jotai/atoms';
 import { EHardwareVendor } from '@onekeyhq/shared/types/device';
 
 import { Layout } from './utils/Layout';
@@ -41,7 +40,7 @@ const LedgerAppOpsTester = () => {
   const [progress, setProgress] = useState<number | null>(null);
   const [progressLabel, setProgressLabel] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [recoveryEventBusy, setRecoveryEventBusy] = useState(false);
+  const [appInstallState] = useThirdPartyAppInstallAtom();
   const [logs, setLogs] = useState<ILogEntry[]>([]);
   const [installed, setInstalled] = useState<IAppMetadata[] | null>(null);
   const [available, setAvailable] = useState<IAppMetadata[] | null>(null);
@@ -105,43 +104,24 @@ const LedgerAppOpsTester = () => {
   // with no system dialog to grant permission. Wait for the user to click
   // "Search devices" instead.
 
-  // Subscribe to install progress events from the SDK adapter, bridged
-  // through the kit-bg LedgerAdapter wrapper into appEventBus.
+  // Mirror live install progress from the dedicated install atom.
   useEffect(() => {
-    const listener = (e: {
-      vendor: EHardwareVendor;
-      connectId: string;
-      appName: string;
-      progress: number;
-      requiredUserInteraction?: string;
-    }) => {
-      if (e.vendor !== EHardwareVendor.ledger) return;
-      // Only track events for the connectId we asked to install.
-      if (connectId && e.connectId !== connectId) return;
-      setProgress(e.progress);
-      setProgressLabel(
-        e.requiredUserInteraction && e.requiredUserInteraction !== 'none'
-          ? `${e.requiredUserInteraction} (${Math.round(e.progress * 100)}%)`
-          : `${Math.round(e.progress * 100)}%`,
-      );
-    };
-    appEventBus.on(
-      EAppEventBusNames.ThirdPartyHardwareAppInstallProgress,
-      listener,
-    );
-    return () => {
-      appEventBus.off(
-        EAppEventBusNames.ThirdPartyHardwareAppInstallProgress,
-        listener,
-      );
-    };
-  }, [connectId]);
+    if (
+      !appInstallState ||
+      appInstallState.vendor !== EHardwareVendor.ledger ||
+      appInstallState.progress === undefined
+    ) {
+      return;
+    }
+    setProgress(appInstallState.progress);
+    setProgressLabel(`${Math.round(appInstallState.progress * 100)}%`);
+  }, [appInstallState]);
 
   const handleListInstalled = async () => {
     setBusy(true);
     try {
       const res =
-        (await backgroundApiProxy.serviceHardware.thirdPartyHardwareListInstalledApps(
+        (await backgroundApiProxy.serviceThirdPartyHardware.thirdPartyHardwareListInstalledApps(
           { vendor: EHardwareVendor.ledger, connectId },
         )) as { success: boolean; payload: unknown };
       if (res.success) {
@@ -162,7 +142,7 @@ const LedgerAppOpsTester = () => {
     setBusy(true);
     try {
       const res =
-        (await backgroundApiProxy.serviceHardware.thirdPartyHardwareListAvailableApps(
+        (await backgroundApiProxy.serviceThirdPartyHardware.thirdPartyHardwareListAvailableApps(
           { vendor: EHardwareVendor.ledger, connectId },
         )) as { success: boolean; payload: unknown };
       if (res.success) {
@@ -190,11 +170,13 @@ const LedgerAppOpsTester = () => {
     appendLog(`installApp ${appName} → start`);
     try {
       const res =
-        (await backgroundApiProxy.serviceHardware.thirdPartyHardwareInstallApp({
-          vendor: EHardwareVendor.ledger,
-          connectId,
-          appName,
-        })) as { success: boolean; payload: unknown };
+        (await backgroundApiProxy.serviceThirdPartyHardware.thirdPartyHardwareInstallApp(
+          {
+            vendor: EHardwareVendor.ledger,
+            connectId,
+            appName,
+          },
+        )) as { success: boolean; payload: unknown };
       if (res.success) {
         appendLog(`installApp ${appName} → SUCCESS`);
         setProgress(1);
@@ -217,7 +199,7 @@ const LedgerAppOpsTester = () => {
     setBusy(true);
     try {
       const res =
-        (await backgroundApiProxy.serviceHardware.thirdPartyHardwareGetFirmwareVersion(
+        (await backgroundApiProxy.serviceThirdPartyHardware.thirdPartyHardwareGetFirmwareVersion(
           { vendor: EHardwareVendor.ledger, connectId },
         )) as { success: boolean; payload: unknown };
       if (res.success) {
@@ -240,7 +222,7 @@ const LedgerAppOpsTester = () => {
     setBusy(true);
     try {
       const res =
-        (await backgroundApiProxy.serviceHardware.thirdPartyHardwareGetDeviceInfo(
+        (await backgroundApiProxy.serviceThirdPartyHardware.thirdPartyHardwareGetDeviceInfo(
           { vendor: EHardwareVendor.ledger, connectId },
         )) as { success: boolean; payload: unknown };
       if (res.success) {
@@ -259,58 +241,13 @@ const LedgerAppOpsTester = () => {
 
   const handleCancel = async () => {
     if (!connectId) return;
-    await backgroundApiProxy.serviceHardware.thirdPartyHardwareCancel({
-      vendor: EHardwareVendor.ledger,
-      connectId,
-    });
+    await backgroundApiProxy.serviceThirdPartyHardware.thirdPartyHardwareCancel(
+      {
+        vendor: EHardwareVendor.ledger,
+        connectId,
+      },
+    );
     appendLog('cancel sent');
-  };
-
-  const handleEmitRecoveryEvents = async () => {
-    const eventConnectId = connectId || '';
-    const events = [
-      {
-        type: 'ledger_app_install_required',
-        vendor: EHardwareVendor.ledger,
-        connectId: eventConnectId,
-        appName: 'Bitcoin',
-        source: 'createAccount',
-      },
-      {
-        type: 'ledger_app_install_required',
-        vendor: EHardwareVendor.ledger,
-        connectId: eventConnectId,
-        appName: 'Bitcoin',
-        source: 'batchCreateAccount',
-      },
-      {
-        type: 'ledger_app_install_required',
-        vendor: EHardwareVendor.ledger,
-        connectId: eventConnectId,
-        appName: 'TON',
-        source: 'sign',
-      },
-    ] as const;
-
-    setRecoveryEventBusy(true);
-    try {
-      for (const [index, event] of events.entries()) {
-        if (index > 0) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-        appEventBus.emit(
-          EAppEventBusNames.ThirdPartyHardwareRecoveryAction,
-          event,
-        );
-        appendLog(
-          `emit recovery event ${index + 1}/${events.length} → ${
-            event.appName
-          } connectId=${event.connectId || '(empty)'}`,
-        );
-      }
-    } finally {
-      setRecoveryEventBusy(false);
-    }
   };
 
   return (
@@ -370,25 +307,6 @@ const LedgerAppOpsTester = () => {
             </SizableText>
           </YStack>
         ) : null}
-      </YStack>
-
-      <Divider />
-
-      <YStack gap="$2">
-        <SizableText size="$bodyMdMedium">
-          Recovery Dialog Event Bus
-        </SizableText>
-        <XStack gap="$2" alignItems="center" flexWrap="wrap">
-          <Button
-            onPress={() => void handleEmitRecoveryEvents()}
-            disabled={recoveryEventBusy}
-          >
-            Emit 3 Recovery Events
-          </Button>
-          <SizableText size="$bodySm" color="$textSubdued">
-            Bitcoin, duplicated Bitcoin, TON
-          </SizableText>
-        </XStack>
       </YStack>
 
       <Divider />

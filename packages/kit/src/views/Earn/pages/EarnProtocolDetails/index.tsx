@@ -3,11 +3,14 @@ import { Fragment, memo, useCallback, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 
 import {
+  Badge,
+  Dialog,
   Divider,
   Icon,
   IconButton,
   Image,
   Page,
+  ScrollView,
   SizableText,
   Stack,
   XStack,
@@ -50,7 +53,9 @@ import {
 import type {
   IEarnAlert,
   IEarnText,
+  IEarnTextTooltip,
   IEarnTokenInfo,
+  IProtocolInfo,
   IStakeEarnDetail,
 } from '@onekeyhq/shared/types/staking';
 
@@ -63,6 +68,7 @@ import {
 import { EarnActionIcon } from '../../../Staking/components/ProtocolDetails/EarnActionIcon';
 import { EarnAlert } from '../../../Staking/components/ProtocolDetails/EarnAlert';
 import { EarnIcon } from '../../../Staking/components/ProtocolDetails/EarnIcon';
+import { EarnPlatformBonusSection } from '../../../Staking/components/ProtocolDetails/EarnPlatformBonusSection';
 import { EarnText } from '../../../Staking/components/ProtocolDetails/EarnText';
 import { GridItem } from '../../../Staking/components/ProtocolDetails/GridItemV2';
 import { PendleRulesSection } from '../../../Staking/components/ProtocolDetails/PendleRulesSection';
@@ -347,6 +353,37 @@ function ChartSection({
   );
 }
 
+const MARKET_INFO_DIALOG_CONTENT_MAX_HEIGHT = 512;
+
+function MarketInfoDialogContent({ tooltip }: { tooltip: IEarnTextTooltip }) {
+  return (
+    <ScrollView
+      maxHeight={MARKET_INFO_DIALOG_CONTENT_MAX_HEIGHT}
+      nestedScrollEnabled
+    >
+      <YStack px="$5" pb="$5" gap="$5">
+        {tooltip.data.description ? (
+          <EarnText text={tooltip.data.description} size="$bodyMd" />
+        ) : null}
+        {tooltip.data.items?.map((item, index) => (
+          <YStack key={`${item.title.text}-${index}`} gap="$1">
+            <EarnText
+              text={item.title}
+              size="$bodySm"
+              color={item.title.color ?? '$textSubdued'}
+            />
+            <EarnText
+              text={item.description}
+              size="$bodyMd"
+              color={item.description.color ?? '$text'}
+            />
+          </YStack>
+        ))}
+      </YStack>
+    </ScrollView>
+  );
+}
+
 function GridSection({
   data,
 }: {
@@ -355,6 +392,35 @@ function GridSection({
     | IStakeEarnDetail['rules']
     | IStakeEarnDetail['performance'];
 }) {
+  const intl = useIntl();
+  const marketInfoTooltip =
+    data && 'tooltip' in data && data.tooltip?.type === 'text'
+      ? data.tooltip
+      : undefined;
+  const handleShowMarketInfo = useCallback(() => {
+    if (!marketInfoTooltip) {
+      return;
+    }
+
+    Dialog.show({
+      title: marketInfoTooltip.data.title?.text ?? 'Market info',
+      disableDrag: true,
+      contentContainerProps: {
+        px: '$0',
+        pb: '$0',
+      },
+      floatingPanelProps: {
+        width: 400,
+      },
+      renderContent: <MarketInfoDialogContent tooltip={marketInfoTooltip} />,
+      onConfirmText: intl.formatMessage({ id: ETranslations.global_got_it }),
+      confirmButtonProps: {
+        variant: 'secondary',
+      },
+      showCancelButton: false,
+    });
+  }, [intl, marketInfoTooltip]);
+
   if (!data) {
     return null;
   }
@@ -363,7 +429,27 @@ function GridSection({
     <>
       {data.items?.length ? (
         <YStack gap="$6">
-          <EarnText text={data.title} size="$headingLg" />
+          <XStack alignItems="center" gap="$3">
+            <EarnText text={data.title} size="$headingLg" />
+            {marketInfoTooltip ? (
+              <Badge
+                badgeSize="lg"
+                badgeType="default"
+                gap="$1"
+                cursor="pointer"
+                onPress={handleShowMarketInfo}
+              >
+                <Badge.Text>
+                  {marketInfoTooltip.data.title?.text ?? 'Market info'}
+                </Badge.Text>
+                <Icon
+                  name="InfoCircleOutline"
+                  size="$3.5"
+                  color="$iconSubdued"
+                />
+              </Badge>
+            ) : null}
+          </XStack>
           <XStack flexWrap="wrap" m="$-5" p="$2">
             {data.items.map((cell, cellIndex) => (
               <GridItem
@@ -482,6 +568,7 @@ function RiskSection({ risk }: { risk?: IStakeEarnDetail['risk'] }) {
 const DetailsPartComponent = ({
   detailInfo,
   tokenInfo,
+  protocolInfo,
   isLoading,
   keepSkeletonVisible,
   onRefresh,
@@ -493,6 +580,7 @@ const DetailsPartComponent = ({
 }: {
   detailInfo: IStakeEarnDetail | undefined;
   tokenInfo?: IEarnTokenInfo;
+  protocolInfo?: IProtocolInfo;
   isLoading: boolean;
   keepSkeletonVisible: boolean;
   onRefresh: () => void;
@@ -533,6 +621,12 @@ const DetailsPartComponent = ({
                 vault={vault}
               />
             </YStack>
+            <EarnPlatformBonusSection
+              appearance="alert"
+              platformBonus={detailInfo.platformBonus}
+              protocolInfo={protocolInfo}
+              tokenInfo={tokenInfo}
+            />
             <GridSection data={detailInfo.intro} />
             <ProtocolIntroSection protocolInfo={detailInfo.protocolInfo} />
             {earnUtils.isPendleProvider({
@@ -580,6 +674,7 @@ const ManagePositionPart = ({
   tokenImageUri,
   accountId,
   indexedAccountId,
+  suppressPlatformBonus,
   onCreateAddress,
   onStakeWithdrawSuccess,
 }: {
@@ -590,6 +685,7 @@ const ManagePositionPart = ({
   tokenImageUri?: string;
   accountId: string;
   indexedAccountId?: string;
+  suppressPlatformBonus?: boolean;
   onCreateAddress?: () => Promise<void>;
   onStakeWithdrawSuccess?: () => void;
 }) => {
@@ -605,6 +701,7 @@ const ManagePositionPart = ({
           accountId={accountId}
           indexedAccountId={indexedAccountId}
           fallbackTokenImageUri={tokenImageUri}
+          suppressPlatformBonus={suppressPlatformBonus}
           onCreateAddress={onCreateAddress}
           onStakeWithdrawSuccess={onStakeWithdrawSuccess}
         />
@@ -682,15 +779,21 @@ const EarnProtocolDetailsPage = ({ route }: { route: IRouteProps }) => {
     selectedAccount.indexedAccountId || indexedAccount?.id;
   const { networkId, symbol, provider, vault } = resolvedParams;
 
-  const { detailInfo, tokenInfo, isLoading, refreshData, refreshAccount } =
-    useProtocolDetailData({
-      accountId,
-      networkId,
-      indexedAccountId,
-      symbol,
-      provider,
-      vault,
-    });
+  const {
+    detailInfo,
+    tokenInfo,
+    protocolInfo,
+    isLoading,
+    refreshData,
+    refreshAccount,
+  } = useProtocolDetailData({
+    accountId,
+    networkId,
+    indexedAccountId,
+    symbol,
+    provider,
+    vault,
+  });
 
   useUnsupportedProtocol({
     detailInfo,
@@ -847,6 +950,7 @@ const EarnProtocolDetailsPage = ({ route }: { route: IRouteProps }) => {
           <DetailsPart
             detailInfo={detailInfo}
             tokenInfo={tokenInfo}
+            protocolInfo={protocolInfo}
             isLoading={isLoading ?? false}
             keepSkeletonVisible={keepSkeletonVisible}
             onRefresh={refreshData}
@@ -867,6 +971,7 @@ const EarnProtocolDetailsPage = ({ route }: { route: IRouteProps }) => {
               tokenImageUri={tokenInfo?.token?.logoURI}
               accountId={accountId}
               indexedAccountId={indexedAccountId}
+              suppressPlatformBonus={Boolean(detailInfo?.platformBonus)}
               onCreateAddress={onCreateAddress}
               onStakeWithdrawSuccess={handleStakeWithdrawSuccess}
             />

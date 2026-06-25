@@ -14,6 +14,8 @@ import type {
 import { MESSAGE_TYPES } from '../../TradingViewPerpsV2/constants/messageTypes';
 import { fetchTradingViewV2DataWithSlicing } from '../hooks';
 
+import { sendVolumeVisibilityUpdate } from './volumeVisibilityHandler';
+
 import type { IMessageHandlerContext, IMessageHandlerParams } from './types';
 
 const MAX_MARKS_COUNT = 60;
@@ -253,6 +255,7 @@ export async function handleKLineDataRequest({
     webRef,
     accountAddress,
     marksTimeRange,
+    tokenSymbol,
   } = context;
 
   // Safely extract history data with proper type checking
@@ -271,7 +274,10 @@ export async function handleKLineDataRequest({
     const resolution = safeData.resolution as string;
     const from = safeData.from as number;
     const to = safeData.to as number;
-    if (context.currentKLineResolution) {
+
+    if (context.onCurrentKLineResolutionChange) {
+      context.onCurrentKLineResolutionChange(resolution);
+    } else if (context.currentKLineResolution) {
       context.currentKLineResolution.current = resolution;
     }
 
@@ -301,6 +307,10 @@ export async function handleKLineDataRequest({
             timeFrom: from,
             timeTo: to,
             autoHandleError: shouldSuppressKLineError ? false : undefined,
+            kLineDataFallback: context.kLineDataFallback,
+            primaryKLineDataUnavailable: context.primaryKLineDataUnavailable,
+            onPrimaryKLineDataUnavailable:
+              context.onPrimaryKLineDataUnavailable,
           });
       const shouldUseEmptyKLineData =
         shouldForceEmptyKLineData ||
@@ -317,6 +327,14 @@ export async function handleKLineDataRequest({
             kLineData,
             requestData: messageData,
           },
+        });
+
+        sendVolumeVisibilityUpdate({
+          allowHide: Boolean(safeData.firstDataRequest),
+          kLineData,
+          source: 'history',
+          symbol: (safeData.symbol as string) || tokenSymbol || tokenAddress,
+          webRef,
         });
       }
 

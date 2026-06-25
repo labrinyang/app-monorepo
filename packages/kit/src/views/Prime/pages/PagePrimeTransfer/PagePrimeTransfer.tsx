@@ -25,6 +25,7 @@ import { usePrimeTransferExit } from './components/hooks/usePrimeTransferExit';
 import { PrimeTransferDirection } from './components/PrimeTransferDirection';
 import { PrimeTransferExitPrevent } from './components/PrimeTransferExitPrevent';
 import { PrimeTransferHome } from './components/PrimeTransferHome';
+import { registerPrimeTransferImportTraceDebugGlobal } from './components/PrimeTransferImportProcessingDialog';
 
 export default function PagePrimeTransfer() {
   const [primeTransferAtom] = usePrimeTransferAtom();
@@ -41,6 +42,13 @@ export default function PagePrimeTransfer() {
   const initialCode = routeParamsCode || '';
 
   const [remotePairingCode, setRemotePairingCode] = useState(initialCode);
+
+  useEffect(() => {
+    // Chrome/AI agents can inspect the transfer-only import trace while this
+    // page is open:
+    // await window.$$oneKeyPrimeTransferDebug.getImportTraceSnapshot()
+    registerPrimeTransferImportTraceDebugGlobal();
+  }, []);
 
   const isInitialCodeSet = useRef(false);
   useEffect(() => {
@@ -108,6 +116,17 @@ export default function PagePrimeTransfer() {
   ]);
 
   useEffect(() => {
+    void backgroundApiProxy.servicePrimeTransfer.updateSelfTransferType({
+      transferType: routeParamsTransferType,
+    });
+    return () => {
+      void backgroundApiProxy.servicePrimeTransfer.updateSelfTransferType({
+        transferType: undefined,
+      });
+    };
+  }, [routeParamsTransferType]);
+
+  useEffect(() => {
     if (platformEnv.isExtension) {
       // Start UI layer heartbeat - ping service immediately and then every 5 seconds
       void backgroundApiProxy.servicePrimeTransfer.pingService();
@@ -145,7 +164,6 @@ export default function PagePrimeTransfer() {
     if (primeTransferAtom.status === EPrimeTransferStatus.init) {
       return (
         <PrimeTransferHome
-          transferType={routeParamsTransferType}
           remotePairingCode={remotePairingCode}
           setRemotePairingCode={setRemotePairingCode}
           autoConnect={!!routeParamsCode}
@@ -164,7 +182,6 @@ export default function PagePrimeTransfer() {
           <PrimeTransferDirection
             remotePairingCode={remotePairingCode}
             botWalletId={routeParamsBotWalletId}
-            transferType={routeParamsTransferType}
           />
         </>
       );
@@ -175,7 +192,6 @@ export default function PagePrimeTransfer() {
     routeParamsServer,
     routeParamsBotWalletId,
     routeParamsDefaultTab,
-    routeParamsTransferType,
     primeTransferAtom.status,
     remotePairingCode,
   ]);

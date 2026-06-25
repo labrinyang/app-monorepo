@@ -8,6 +8,7 @@ import {
   EAppEventBusNames,
   appEventBus,
 } from '@onekeyhq/shared/src/eventBus/appEventBus';
+import { getDefaultLocale } from '@onekeyhq/shared/src/locale/getDefaultLocale';
 import { defaultLogger } from '@onekeyhq/shared/src/logger/logger';
 import { memoizee } from '@onekeyhq/shared/src/utils/cacheUtils';
 import { dedupeTokenSelectorFavoriteCoins } from '@onekeyhq/shared/src/utils/perpsTokenSelectorFavorites';
@@ -74,12 +75,18 @@ class ServiceMarketV2 extends ServiceBase {
     // critical memory pressure. These are the largest known per-route
     // cache footprints (token logos + pricing for 218 batch fetches in
     // 27 min in observed sessions).
+    //
+    // Intentionally NOT clearing memoizedFetchMarketChains /
+    // memoizedFetchMarketBasicConfig: both are KB-sized constant configs
+    // with a 1 h TTL. Previously these were dropped here too, which made
+    // every critical-memory event force a network refetch of small
+    // constants — observed as 16+ basicConfig RPCs per 4 min window in
+    // iPad logs (cleared 3× by 3 critical warnings, then immediately
+    // re-fetched by 5 active components).
     appEventBus.on(EAppEventBusNames.MemoryPressureWarning, (event) => {
       if (event.level !== 'critical') return;
       this._marketTokenBatchCache.clear();
       void this.memoizedFetchMarketTokenList.clear();
-      void this.memoizedFetchMarketChains.clear();
-      void this.memoizedFetchMarketBasicConfig.clear();
     });
   }
 
@@ -105,6 +112,16 @@ class ServiceMarketV2 extends ServiceBase {
         this._marketTokenBatchCache.delete(key);
       }
     }
+  }
+
+  private async _getMarketTokenBatchCacheLocale(requestLocale?: string) {
+    let locale = requestLocale?.trim();
+    if (!locale) {
+      const settings = await settingsPersistAtom.get();
+      locale = settings.locale;
+    }
+
+    return (locale === 'system' ? getDefaultLocale() : locale).toLowerCase();
   }
 
   private _normalizeMarketTokenListParams({
@@ -166,9 +183,14 @@ class ServiceMarketV2 extends ServiceBase {
   async fetchMarketTokenDetailByTokenAddress(
     tokenAddress: string,
     networkId: string,
+    options?: {
+      autoHandleError?: boolean;
+      skipConvertCurrency?: boolean;
+    },
   ) {
-    const settings = await settingsPersistAtom.get();
-    const selectedCurrencyId = settings.currencyInfo?.id ?? 'usd';
+    const selectedCurrencyId = options?.skipConvertCurrency
+      ? 'usd'
+      : ((await settingsPersistAtom.get()).currencyInfo?.id ?? 'usd');
     const client = await this.getClient(EServiceEndpointEnum.Utility);
     const requestTokenAddress =
       await resolveMarketTokenDetailRequestTokenAddress({
@@ -183,12 +205,20 @@ class ServiceMarketV2 extends ServiceBase {
       currency: 'usd',
     };
     // When the user has selected a non-USD currency, request a converted price
-    if (selectedCurrencyId !== 'usd') {
+    if (!options?.skipConvertCurrency && selectedCurrencyId !== 'usd') {
       params.convertCurrency = selectedCurrencyId;
     }
     const response = await client.get<IMarketTokenDetailResponse>(
       '/utility/v2/market/token/detail',
-      { params },
+      {
+        params,
+        ...(options?.skipConvertCurrency
+          ? { headers: { 'x-onekey-request-currency': 'usd' } }
+          : {}),
+        ...(options?.autoHandleError === false
+          ? { autoHandleError: false }
+          : {}),
+      },
     );
     return response.data;
   }
@@ -435,6 +465,7 @@ class ServiceMarketV2 extends ServiceBase {
   @backgroundMethod()
   async fetchMarketTokenListBatch({
     tokenAddressList,
+    requestLocale,
     skipCache = false,
   }: {
     tokenAddressList: {
@@ -442,19 +473,22 @@ class ServiceMarketV2 extends ServiceBase {
       chainId: string;
       isNative: boolean;
     }[];
+    requestLocale?: string;
     skipCache?: boolean;
   }) {
     // Clean expired cache entries periodically
     this._cleanExpiredMarketTokenBatchCache();
 
     const now = Date.now();
+    const cacheLocale =
+      await this._getMarketTokenBatchCacheLocale(requestLocale);
     const cachedResults: IMarketTokenListItem[] = [];
     const missingTokens: typeof tokenAddressList = [];
     const tokenIndexMap = new Map<string, number>();
 
     // Check cache for each token
     tokenAddressList.forEach((token, index) => {
-      const cacheKey = `${
+      const cacheKey = `${cacheLocale}:${
         token.chainId
       }:${token.contractAddress.toLowerCase()}`;
       tokenIndexMap.set(cacheKey, index);
@@ -490,7 +524,10 @@ class ServiceMarketV2 extends ServiceBase {
         currency: 'usd',
       },
       {
-        headers: { 'x-onekey-request-currency': 'usd' },
+        headers: {
+          'x-onekey-request-currency': 'usd',
+          'x-onekey-request-locale': cacheLocale,
+        },
       },
     );
 
@@ -514,7 +551,7 @@ class ServiceMarketV2 extends ServiceBase {
     data.list.forEach((item, apiIndex) => {
       const token = missingTokens[apiIndex];
       if (!token) return;
-      const cacheKey = `${
+      const cacheKey = `${cacheLocale}:${
         token.chainId
       }:${token.contractAddress.toLowerCase()}`;
       const originalIndex = tokenIndexMap.get(cacheKey);
@@ -539,7 +576,6 @@ class ServiceMarketV2 extends ServiceBase {
     isDeleted?: boolean;
   }): Promise<IDBCloudSyncItem[]> {
     const syncManagers = this.backgroundApi.servicePrimeCloudSync.syncManagers;
-    const now = await this.backgroundApi.servicePrimeCloudSync.timeNow();
     const syncCredential =
       await this.backgroundApi.servicePrimeCloudSync.getSyncCredentialSafe();
 
@@ -549,7 +585,7 @@ class ServiceMarketV2 extends ServiceBase {
           return syncManagers.marketWatchList.buildSyncItemByDBQuery({
             syncCredential,
             dbRecord: watchListItem,
-            dataTime: now,
+            dataTime: undefined,
             isDeleted,
           });
         }),
@@ -579,7 +615,7 @@ class ServiceMarketV2 extends ServiceBase {
         isDeleted,
       });
     }
-    await this.backgroundApi.localDb.addAndUpdateSyncItems({
+    await this.backgroundApi.localDb.addAndUpdateFreshSyncItems({
       items: syncItems,
       fn,
     });

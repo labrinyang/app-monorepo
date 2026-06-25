@@ -17,6 +17,7 @@ import {
   Switch,
   YStack,
   startViewTransition,
+  useInModalDialog,
 } from '@onekeyhq/components';
 import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
 import { useIsEnableTransferAllowList } from '@onekeyhq/kit/src/components/AddressInput/hooks';
@@ -28,9 +29,16 @@ import { useRouteIsFocused } from '@onekeyhq/kit/src/hooks/useRouteIsFocused';
 import { usePrimePersistAtom } from '@onekeyhq/kit-bg/src/states/jotai/atoms';
 import { useSettingsPersistAtom } from '@onekeyhq/kit-bg/src/states/jotai/atoms/settings';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
-import { EModalRoutes, EModalSettingRoutes } from '@onekeyhq/shared/src/routes';
+import { defaultLogger } from '@onekeyhq/shared/src/logger/logger';
+import { EModalRoutes } from '@onekeyhq/shared/src/routes';
 import { EPrimeFeatures, EPrimePages } from '@onekeyhq/shared/src/routes/prime';
 import { EReasonForNeedPassword } from '@onekeyhq/shared/types/setting';
+
+import { ReceiveRiskSupportedAssetsDialogContent } from './ReceiveRiskSupportedAssets';
+import { promptKytNotificationPermissionIfNeeded } from './showKytNotificationPermissionDialog';
+
+const SUPPORTED_ASSETS_DIALOG_MAX_HEIGHT = 560;
+const SUPPORTED_ASSETS_DIALOG_MIN_HEIGHT = 360;
 
 const SettingProtectionModal = () => {
   const intl = useIntl();
@@ -51,6 +59,7 @@ const SettingProtectionModal = () => {
   const [isUpdatingReceiveRiskMonitoring, setIsUpdatingReceiveRiskMonitoring] =
     useState(false);
   const navigation = useAppNavigation();
+  const dialog = useInModalDialog();
 
   const useIsFocused = useRouteIsFocused();
 
@@ -88,6 +97,11 @@ const SettingProtectionModal = () => {
         await backgroundApiProxy.serviceSetting.apiSetKytEnabled({
           enabled: value,
         });
+        // Only prompt to enable notifications when turning KYT on; disabling
+        // never triggers the notification check.
+        if (value) {
+          await promptKytNotificationPermissionIfNeeded({ navigation, intl });
+        }
       } catch {
         // Error toast is handled by @toastIfError in the background method;
         // local state stays unchanged so the switch keeps its previous position.
@@ -96,8 +110,37 @@ const SettingProtectionModal = () => {
         updateLockTimer();
       }
     },
-    [updateLockTimer],
+    [intl, navigation, updateLockTimer],
   );
+
+  const handleOpenReceiveRiskSupportedAssets = useCallback(() => {
+    updateLockTimer();
+    dialog.show({
+      title: intl.formatMessage({
+        id: ETranslations.kyt_supported_assets__title,
+      }),
+      showFooter: false,
+      contentContainerProps: {
+        px: '$0',
+        pb: '$0',
+      },
+      floatingPanelProps: {
+        width: 480,
+      },
+      renderContent: (
+        <ReceiveRiskSupportedAssetsDialogContent
+          maxHeight={SUPPORTED_ASSETS_DIALOG_MAX_HEIGHT}
+          minHeight={SUPPORTED_ASSETS_DIALOG_MIN_HEIGHT}
+          contentContainerProps={{
+            pt: '$2',
+          }}
+        />
+      ),
+      onClose: () => {
+        updateLockTimer();
+      },
+    });
+  }, [dialog, intl, updateLockTimer]);
 
   useEffect(() => {
     if (useIsFocused) {
@@ -212,12 +255,25 @@ const SettingProtectionModal = () => {
             />
           </ListItem>
           <Divider my="$5" mx="$5" />
-          <SectionList.SectionHeader title="Receive risk monitoring" />
+          <SectionList.SectionHeader
+            title={intl.formatMessage({
+              id: ETranslations.prime_feature_receive_risk_monitoring__title,
+            })}
+          />
           <ListItem
-            title="Monitor incoming transfers"
-            subtitle="Check supported incoming token transfers for fund-source risk."
+            title={intl.formatMessage({
+              id: ETranslations.prime_feature_receive_risk_monitoring__title,
+            })}
+            subtitle={intl.formatMessage({
+              id: ETranslations.prime_feature_receive_risk_monitoring__desc,
+            })}
             {...(!isPrimeSubscriptionActive && {
               onPress: () => {
+                defaultLogger.prime.subscription.primeEntryClick({
+                  featureName: EPrimeFeatures.ReceiveRiskMonitoring,
+                  entryPoint: 'settingsPage',
+                  isPrimeActive: false,
+                });
                 navigation.pushModal(EModalRoutes.PrimeModal, {
                   screen: EPrimePages.PrimeDashboard,
                   params: {
@@ -258,14 +314,14 @@ const SettingProtectionModal = () => {
           </ListItem>
           <ListItem
             testID="setting-receive-risk-supported-assets"
-            title="Supported assets"
-            subtitle="View networks and tokens"
+            title={intl.formatMessage({
+              id: ETranslations.kyt_supported_assets__title,
+            })}
+            subtitle={intl.formatMessage({
+              id: ETranslations.kyt_supported_assets__desc,
+            })}
             drillIn
-            onPress={() => {
-              navigation.push(
-                EModalSettingRoutes.SettingReceiveRiskSupportedAssets,
-              );
-            }}
+            onPress={handleOpenReceiveRiskSupportedAssets}
           />
           <Divider my="$5" mx="$5" />
           <SectionList.SectionHeader
@@ -343,6 +399,7 @@ const SettingProtectionModal = () => {
   }, [
     checkEnableProtection,
     enableProtection,
+    handleOpenReceiveRiskSupportedAssets,
     handleToggleReceiveRiskMonitoring,
     handleTransition,
     intl,

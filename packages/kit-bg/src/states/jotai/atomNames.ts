@@ -21,6 +21,8 @@ export enum EAtomNames {
   hardwareUiStateAtom = 'hardwareUiStateAtom',
   hardwareUiStateCompletedAtom = 'hardwareUiStateCompletedAtom',
   thirdPartyHardwareUiStateAtom = 'thirdPartyHardwareUiStateAtom',
+  thirdPartyAppInstallAtom = 'thirdPartyAppInstallAtom',
+  thirdPartyBatchInstallAtom = 'thirdPartyBatchInstallAtom',
   hardwareWalletXfpStatusAtom = 'hardwareWalletXfpStatusAtom',
   // firmwareUpdatesDetectStatusAtom is reserved for firmwareUpdatesDetectStatusPersistAtom
   firmwareUpdatesDetectStatusPersistAtom = 'firmwareUpdatesDetectStatusPersistAtom', // persist
@@ -59,7 +61,6 @@ export enum EAtomNames {
   primeInitAtom = 'primeInitAtom',
   primeLoginDialogAtom = 'primeLoginDialogAtom',
   primeTransferAtom = 'primeTransferAtom',
-  keylessDialogAtom = 'keylessDialogAtom',
   keylessPinConfirmStatusAtom = 'keylessPinConfirmStatusAtom',
   keylessLastCancelVerifyPinTimeAtom = 'keylessLastCancelVerifyPinTimeAtom',
   keylessBackendShareV2MigrationPersistAtom = 'keylessBackendShareV2MigrationPersistAtom',
@@ -78,6 +79,7 @@ export enum EAtomNames {
   perpsAccountLoadingInfoAtom = 'perpsAccountLoadingInfoAtom',
   perpsActiveAssetAtom = 'perpsActiveAssetAtom',
   perpsActiveAssetCtxAtom = 'perpsActiveAssetCtxAtom',
+  perpsActiveAssetCtxDisplayAtom = 'perpsActiveAssetCtxDisplayAtom',
   perpsActiveAssetDataAtom = 'perpsActiveAssetDataAtom',
   perpsActiveOrderBookOptionsAtom = 'perpsActiveOrderBookOptionsAtom',
   perpsCustomSettingsAtom = 'perpsCustomSettingsAtom',
@@ -100,6 +102,7 @@ export enum EAtomNames {
   perpsLastUsedLeverageAtom = 'perpsLastUsedLeverageAtom',
   perpsLayoutStateAtom = 'perpsLayoutStateAtom',
   perpsAbstractionModeAtom = 'perpsAbstractionModeAtom',
+  perpsSpotDustingAtom = 'perpsSpotDustingAtom',
   perpsSpotBalancesAtom = 'perpsSpotBalancesAtom',
   perpsFooterTickerModePersistAtom = 'perpsFooterTickerModePersistAtom',
   // trading mode
@@ -113,6 +116,7 @@ export enum EAtomNames {
   spotAssetCtxsMapAtom = 'spotAssetCtxsMapAtom',
   spotActiveOpenOrdersAtom = 'spotActiveOpenOrdersAtom',
   spotPairDisplayMapAtom = 'spotPairDisplayMapAtom',
+  spotPairDisplayNameMapAtom = 'spotPairDisplayNameMapAtom',
   spotExternalMarketCapsAtom = 'spotExternalMarketCapsAtom',
   perpsFavoritesOrderPersistAtom = 'perpsFavoritesOrderPersistAtom',
   // network doctor

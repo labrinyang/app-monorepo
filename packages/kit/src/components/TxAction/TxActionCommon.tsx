@@ -220,12 +220,12 @@ function TxActionCommonTitle({
       ) : null}
       {kytRiskLevel === EKytRiskLevel.Severe ? (
         <Badge badgeSize="sm" badgeType="critical" ml="$2">
-          Severe risk
+          {intl.formatMessage({ id: ETranslations.kyt_severe_risk__title })}
         </Badge>
       ) : null}
       {kytRiskLevel === EKytRiskLevel.High ? (
         <Badge badgeSize="sm" badgeType="warning" ml="$2">
-          High risk
+          {intl.formatMessage({ id: ETranslations.kyt_high_risk__title })}
         </Badge>
       ) : null}
     </XStack>
@@ -445,6 +445,11 @@ function TxActionCommonListView(
     riskyLevel,
     kytRiskLevel,
     compact,
+    // Extra content rendered below the row, inside the same (column-layout)
+    // ListItem — used by the history list to keep a pending tx's speed-up/cancel
+    // actions in the same pressable container as the row, so navigation and the
+    // press/hover highlight cover both.
+    children: bottomContent,
     ...rest
   } = props;
   const [settings] = useSettingsPersistAtom();
@@ -571,6 +576,7 @@ function TxActionCommonListView(
           currencySymbol={currencySymbol}
         />
       </XStack>
+      {bottomContent}
     </ListItem>
   );
 }

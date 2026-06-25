@@ -13,6 +13,7 @@ import {
   withHistoryListProvider,
 } from '@onekeyhq/kit/src/states/jotai/contexts/historyList';
 import { useHistoryListLoadMore } from '@onekeyhq/kit/src/views/Home/pages/hooks/useHistoryListLoadMore';
+import { maybeOpenPrivateSendHistoryDetail } from '@onekeyhq/kit/src/views/Swap/utils/privateSendHistory';
 import {
   useCurrencyPersistAtom,
   useSettingsPersistAtom,
@@ -40,7 +41,10 @@ const tokenHistoryCache = new cacheUtils.LRUCache<string, IAccountHistoryTx[]>({
   ttlAutopurge: true,
 });
 
-function TokenDetailsHistory(props: IProps) {
+function TokenDetailsHistoryContent({
+  focusParam,
+  ...props
+}: IProps & { focusParam: boolean }) {
   const navigation = useAppNavigation();
 
   const {
@@ -63,7 +67,6 @@ function TokenDetailsHistory(props: IProps) {
     }
   }, []);
 
-  const { isFocused } = useTabIsRefreshingFocused();
   const [settings] = useSettingsPersistAtom();
   const [{ currencyMap }] = useCurrencyPersistAtom();
   const { updateAddressesInfo } = useHistoryListActions().current;
@@ -107,10 +110,10 @@ function TokenDetailsHistory(props: IProps) {
       pollingInterval: POLLING_INTERVAL_FOR_HISTORY,
       debounced: POLLING_DEBOUNCE_INTERVAL,
       overrideIsFocused: (isPageFocused: boolean) =>
-        isPageFocused && (isTabView ? isFocused : true),
+        isPageFocused && (isTabView ? focusParam : true),
       ...(cachedHistory !== undefined ? { initResult: cachedHistory } : {}),
     }),
-    [cachedHistory, isFocused, isTabView],
+    [cachedHistory, focusParam, isTabView],
   );
   const {
     appendedTxs,
@@ -226,14 +229,26 @@ function TokenDetailsHistory(props: IProps) {
         }
       }
 
+      const accountAddress =
+        await backgroundApiProxy.serviceAccount.getAccountAddressForApi({
+          accountId,
+          networkId,
+        });
+      const openedPrivateSendHistory = await maybeOpenPrivateSendHistoryDetail({
+        historyTx: tx,
+        navigation,
+        accountId,
+        accountAddress,
+        network: { id: networkId },
+        tokenInfo,
+        currencySymbol: settings.currencyInfo.symbol,
+      });
+      if (openedPrivateSendHistory) return;
+
       navigation.push(EModalAssetDetailRoutes.HistoryDetails, {
         accountId,
         networkId,
-        accountAddress:
-          await backgroundApiProxy.serviceAccount.getAccountAddressForApi({
-            accountId,
-            networkId,
-          }),
+        accountAddress,
         xpub: await backgroundApiProxy.serviceAccount.getAccountXpub({
           accountId,
           networkId,
@@ -241,7 +256,7 @@ function TokenDetailsHistory(props: IProps) {
         historyTx: tx,
       });
     },
-    [accountId, navigation, networkId],
+    [accountId, navigation, networkId, settings.currencyInfo.symbol, tokenInfo],
   );
 
   useEffect(() => {
@@ -272,6 +287,20 @@ function TokenDetailsHistory(props: IProps) {
       hasMore={loadMoreHasMore}
     />
   );
+}
+
+function TokenDetailsHistoryWithTabFocus(props: IProps) {
+  const { isFocused } = useTabIsRefreshingFocused();
+
+  return <TokenDetailsHistoryContent {...props} focusParam={isFocused} />;
+}
+
+function TokenDetailsHistory(props: IProps) {
+  if (props.isTabView) {
+    return <TokenDetailsHistoryWithTabFocus {...props} />;
+  }
+
+  return <TokenDetailsHistoryContent {...props} focusParam />;
 }
 
 const TokenDetailsHistoryWithProvider = memo(

@@ -24,6 +24,7 @@ import {
   appEventBus,
 } from '@onekeyhq/shared/src/eventBus/appEventBus';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
+import { defaultLogger } from '@onekeyhq/shared/src/logger/logger';
 import platformEnv from '@onekeyhq/shared/src/platformEnv';
 import { EModalRoutes } from '@onekeyhq/shared/src/routes';
 import { EModalPerpRoutes } from '@onekeyhq/shared/src/routes/perp';
@@ -44,6 +45,7 @@ import {
 } from '../components/TokenSelector/PerpTokenSelectorRow';
 import { useActiveTradeDisplay } from '../hooks/useActiveTradeDisplay';
 import { usePerpResolvedMarketDetail } from '../hooks/usePerpMarketDetail';
+import { usePrewarmPerpsTokenSelectorImages } from '../hooks/usePrewarmPerpsTokenSelectorImages';
 import { PerpsAccountSelectorProviderMirror } from '../PerpsAccountSelectorProviderMirror';
 import { PerpsProviderMirror } from '../PerpsProviderMirror';
 import {
@@ -52,10 +54,14 @@ import {
   isPerpsMobileLayoutTraceRectChanged,
   tracePerpsMobileLayout,
 } from '../utils/mobileLayoutTrace';
+import {
+  type IMobilePerpMarketTab,
+  getMobilePerpMarketPageScrollState,
+} from '../utils/mobilePerpMarketScrollState';
+import { preloadPerpsMobileTokenSelectorPage } from '../utils/preloadPerpsTokenSelector';
 
 const IOS_CHART_HEIGHT = 500;
 const IOS_CHART_BOTTOM_OVERLAP = 56;
-type IMobilePerpMarketTab = 'orderbook' | 'info';
 
 const MOBILE_PERP_MARKET_TAB_ITEMS: Array<{
   key: IMobilePerpMarketTab;
@@ -199,13 +205,46 @@ function useNativeGestureTouchScrollGuard({
   };
 }
 
-function MobilePerpCandlesTouchBridge() {
+function MobilePerpCandlesTouchBridge({
+  isInteractionOverlayOpen,
+  onInteractionOverlayOpenChange,
+}: {
+  isInteractionOverlayOpen: boolean;
+  onInteractionOverlayOpenChange: (isOpen: boolean) => void;
+}) {
   const rawTouchScroll = useMobileTabTouchScrollBridge();
   const layoutRef = useRef<IPerpsMobileLayoutTraceRect | undefined>(undefined);
+  const interactionOverlayOpenRef = useRef(isInteractionOverlayOpen);
+  const handleTouchScrollWhenEnabled = useCallback(
+    (deltaY: number) => {
+      if (interactionOverlayOpenRef.current) {
+        return;
+      }
+      rawTouchScroll(deltaY);
+    },
+    [rawTouchScroll],
+  );
+  const handleInteractionOverlayOpenChange = useCallback(
+    (isOpen: boolean) => {
+      interactionOverlayOpenRef.current = isOpen;
+      onInteractionOverlayOpenChange(isOpen);
+    },
+    [onInteractionOverlayOpenChange],
+  );
   const { handleGestureActiveChange, handleTouchScroll } =
     useNativeGestureTouchScrollGuard({
-      onTouchScroll: rawTouchScroll,
+      onTouchScroll: handleTouchScrollWhenEnabled,
     });
+  useEffect(() => {
+    interactionOverlayOpenRef.current = isInteractionOverlayOpen;
+  }, [isInteractionOverlayOpen]);
+  useEffect(
+    () => () => {
+      interactionOverlayOpenRef.current = false;
+      onInteractionOverlayOpenChange(false);
+    },
+    [onInteractionOverlayOpenChange],
+  );
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
     const rect = getPerpsMobileLayoutTraceRect(event);
     if (isPerpsMobileLayoutTraceRectChanged(layoutRef.current, rect)) {
@@ -222,6 +261,7 @@ function MobilePerpCandlesTouchBridge() {
     <YStack mb={-IOS_CHART_BOTTOM_OVERLAP} onLayout={handleLayout}>
       <MobilePerpMarketHeader />
       <HeaderScrollGestureWrapper
+        disabled={isInteractionOverlayOpen}
         panActiveOffsetY={[-4, 4]}
         panFailOffsetX={[-40, 40]}
         excludeRightEdgeRatio={0.1}
@@ -231,14 +271,21 @@ function MobilePerpCandlesTouchBridge() {
         onGestureActiveChange={handleGestureActiveChange}
       >
         <YStack h={IOS_CHART_HEIGHT} overflow="hidden">
-          <PerpCandles onTouchScroll={handleTouchScroll} />
+          <PerpCandles
+            onTouchScroll={handleTouchScroll}
+            onInteractionOverlayOpenChange={handleInteractionOverlayOpenChange}
+          />
         </YStack>
       </HeaderScrollGestureWrapper>
     </YStack>
   );
 }
 
-function MobilePerpCandlesStatic() {
+function MobilePerpCandlesStatic({
+  onInteractionOverlayOpenChange,
+}: {
+  onInteractionOverlayOpenChange?: (isOpen: boolean) => void;
+}) {
   const layoutRef = useRef<IPerpsMobileLayoutTraceRect | undefined>(undefined);
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
     const rect = getPerpsMobileLayoutTraceRect(event);
@@ -247,12 +294,20 @@ function MobilePerpCandlesStatic() {
       layoutRef.current = rect;
     }
   }, []);
+  useEffect(
+    () => () => {
+      onInteractionOverlayOpenChange?.(false);
+    },
+    [onInteractionOverlayOpenChange],
+  );
 
   return (
     <YStack onLayout={handleLayout}>
       <MobilePerpMarketHeader />
       <YStack flex={1} minHeight={500}>
-        <PerpCandles />
+        <PerpCandles
+          onInteractionOverlayOpenChange={onInteractionOverlayOpenChange}
+        />
       </YStack>
     </YStack>
   );
@@ -265,6 +320,10 @@ function MobilePerpMarket() {
   const navigation = useAppNavigation();
   const [activeTab, setActiveTab] = useState<IMobilePerpMarketTab>('orderbook');
   const [hasInfoTabMounted, setHasInfoTabMounted] = useState(false);
+  const [
+    isTradingViewInteractionOverlayOpen,
+    setIsTradingViewInteractionOverlayOpen,
+  ] = useState(false);
   const pageWidth = usePageWidth();
   const [containerWidth, setContainerWidth] = useState(0);
   const scrollViewRef = useRef<IScrollViewRef>(null);
@@ -285,18 +344,34 @@ function MobilePerpMarket() {
     coin: activeTradeInstrument.coin,
     displayName: marketDetailDisplayName,
   });
+  const prewarmTokenSelectorImages = usePrewarmPerpsTokenSelectorImages();
 
   const onPressTokenSelector = useCallback(() => {
+    void preloadPerpsMobileTokenSelectorPage();
+    void prewarmTokenSelectorImages();
+    defaultLogger.perp.tokenSelector.perpTokenSelectorOpen({
+      currentToken: activeTradeInstrument.coin,
+      tradeMode: mode === 'spot' ? 'spot' : 'perp',
+    });
     navigation.pushModal(EModalRoutes.PerpModal, {
       screen: EModalPerpRoutes.MobileTokenSelector,
     });
-  }, [navigation]);
+  }, [
+    activeTradeInstrument.coin,
+    mode,
+    navigation,
+    prewarmTokenSelectorImages,
+  ]);
 
   const isSplitDetailActive = useIsSplitDetailActive();
 
   const onPageGoBack = useCallback(() => {
     navigation.pop();
   }, [navigation]);
+
+  const handleInteractionOverlayOpenChange = useCallback((isOpen: boolean) => {
+    setIsTradingViewInteractionOverlayOpen(isOpen);
+  }, []);
 
   const renderHeaderTitle = useCallback(() => {
     let pairLabel: string;
@@ -505,7 +580,18 @@ function MobilePerpMarket() {
     [isSplitDetailActive, renderHeaderTitle, renderHeaderRight, safeAreaTop],
   );
 
-  const marketHeaderContent = useMemo(() => <MobilePerpCandlesStatic />, []);
+  useEffect(() => {
+    setIsTradingViewInteractionOverlayOpen(false);
+  }, [activeTradeInstrument.coin, activeTradeInstrument.mode]);
+
+  const marketHeaderContent = useMemo(
+    () => (
+      <MobilePerpCandlesStatic
+        onInteractionOverlayOpenChange={handleInteractionOverlayOpenChange}
+      />
+    ),
+    [handleInteractionOverlayOpenChange],
+  );
 
   const orderBookContent = useMemo(
     () => (
@@ -533,12 +619,26 @@ function MobilePerpMarket() {
   );
 
   const pageFooter = useMemo(() => <PerpMarketFooter />, []);
-  const pageScrollEnabled =
-    platformEnv.isNativeAndroid ||
-    (!platformEnv.isNativeIOS && activeTab === 'info');
+  const { pageScrollContainerEnabled, pageNativeScrollEnabled } =
+    getMobilePerpMarketPageScrollState({
+      activeTab,
+      isInteractionOverlayOpen: isTradingViewInteractionOverlayOpen,
+      isNativeAndroid: Boolean(platformEnv.isNativeAndroid),
+      isNativeIOS: Boolean(platformEnv.isNativeIOS),
+    });
+  const pageScrollProps = useMemo(
+    () => ({
+      showsVerticalScrollIndicator: false,
+      scrollEnabled: pageNativeScrollEnabled,
+    }),
+    [pageNativeScrollEnabled],
+  );
 
   return (
-    <Page scrollEnabled={pageScrollEnabled}>
+    <Page
+      scrollEnabled={pageScrollContainerEnabled}
+      scrollProps={pageScrollProps}
+    >
       {pageHeader}
       <Page.Body p="$0">
         {inlineHeader}
@@ -570,17 +670,31 @@ function MobilePerpMarket() {
                 <YStack flex={1}>
                   <MobilePerpMarketHeader />
                   <YStack flex={1} overflow="hidden">
-                    <PerpCandles />
+                    <PerpCandles
+                      onInteractionOverlayOpenChange={
+                        handleInteractionOverlayOpenChange
+                      }
+                    />
                   </YStack>
                 </YStack>
               ) : platformEnv.isNativeIOS ? (
                 <Tabs.Container
                   initialTabName="orderbook"
-                  renderHeader={() => <MobilePerpCandlesTouchBridge />}
+                  renderHeader={() => (
+                    <MobilePerpCandlesTouchBridge
+                      isInteractionOverlayOpen={
+                        isTradingViewInteractionOverlayOpen
+                      }
+                      onInteractionOverlayOpenChange={
+                        handleInteractionOverlayOpenChange
+                      }
+                    />
+                  )}
                   renderTabBar={() => null}
                 >
                   <Tabs.Tab name="orderbook">
                     <Tabs.ScrollView
+                      scrollEnabled={!isTradingViewInteractionOverlayOpen}
                       showsVerticalScrollIndicator={false}
                       contentContainerStyle={{ flexGrow: 0, minHeight: 0 }}
                     >

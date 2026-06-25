@@ -1,54 +1,27 @@
 import {
   filterTokenSelectorTokensByBackendIndexedNetworks,
-  isTokenSelectorDappTokenFilterSupportedNetwork,
+  isTokenSelectorDappTokenFilterSupportedNetworkBase,
 } from './tokenSelectorFilterUtils';
 
 describe('tokenSelectorFilterUtils', () => {
-  describe('isTokenSelectorDappTokenFilterSupportedNetwork', () => {
-    it('supports all networks so the DeFi token switch can filter indexed networks', () => {
+  describe('isTokenSelectorDappTokenFilterSupportedNetworkBase', () => {
+    it('requires backend indexing and DeFi support', () => {
       expect(
-        isTokenSelectorDappTokenFilterSupportedNetwork({
-          network: {
-            id: 'onekeyall',
-            isAllNetworks: true,
-            backendIndex: false,
-          },
+        isTokenSelectorDappTokenFilterSupportedNetworkBase({
+          backendIndex: true,
+          isDeFiEnabled: true,
         }),
       ).toBe(true);
-    });
-
-    it('supports backend-indexed EVM networks', () => {
       expect(
-        isTokenSelectorDappTokenFilterSupportedNetwork({
-          network: {
-            id: 'evm--1',
-            isAllNetworks: false,
-            backendIndex: true,
-          },
+        isTokenSelectorDappTokenFilterSupportedNetworkBase({
+          backendIndex: true,
+          isDeFiEnabled: false,
         }),
-      ).toBe(true);
-    });
-
-    it('supports backend-indexed non-EVM networks', () => {
+      ).toBe(false);
       expect(
-        isTokenSelectorDappTokenFilterSupportedNetwork({
-          network: {
-            id: 'btc--0',
-            isAllNetworks: false,
-            backendIndex: true,
-          },
-        }),
-      ).toBe(true);
-    });
-
-    it('does not support non-indexed EVM networks', () => {
-      expect(
-        isTokenSelectorDappTokenFilterSupportedNetwork({
-          network: {
-            id: 'evm--324',
-            isAllNetworks: false,
-            backendIndex: false,
-          },
+        isTokenSelectorDappTokenFilterSupportedNetworkBase({
+          backendIndex: false,
+          isDeFiEnabled: true,
         }),
       ).toBe(false);
     });

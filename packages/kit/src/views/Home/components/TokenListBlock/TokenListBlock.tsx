@@ -37,6 +37,7 @@ import {
 } from '@onekeyhq/kit/src/components/TokenSelectorFilter/utils';
 import { useAllNetworkRequests } from '@onekeyhq/kit/src/hooks/useAllNetwork';
 import useAppNavigation from '@onekeyhq/kit/src/hooks/useAppNavigation';
+import { useIsDeFiEnabled } from '@onekeyhq/kit/src/hooks/useIsDeFiEnabled';
 import { useManageToken } from '@onekeyhq/kit/src/hooks/useManageToken';
 import { usePromiseResult } from '@onekeyhq/kit/src/hooks/usePromiseResult';
 import { useRouteIsFocused } from '@onekeyhq/kit/src/hooks/useRouteIsFocused';
@@ -73,9 +74,11 @@ import {
 } from '@onekeyhq/shared/src/consts/walletConsts';
 import {
   EAppEventBusNames,
+  type IAppEventBusPayload,
   appEventBus,
 } from '@onekeyhq/shared/src/eventBus/appEventBus';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
+import { defaultLogger } from '@onekeyhq/shared/src/logger/logger';
 import {
   EModalAssetDetailRoutes,
   EModalReceiveRoutes,
@@ -87,6 +90,7 @@ import accountUtils from '@onekeyhq/shared/src/utils/accountUtils';
 import perfUtils, {
   EPerformanceTimerLogNames,
 } from '@onekeyhq/shared/src/utils/debug/perfUtils';
+import networkUtils from '@onekeyhq/shared/src/utils/networkUtils';
 import {
   buildTokenSelectorDappTokenFilterParams,
   isTokenSelectorDappTokenFilterSupportedNetwork,
@@ -121,6 +125,20 @@ import type {
 
 import { RichBlock } from '../RichBlock/RichBlock';
 
+import {
+  WALLET_ASSET_STATUS_BASIS,
+  WALLET_ASSET_STATUS_ELIGIBLE_WALLET_TYPES,
+  WALLET_ASSET_STATUS_SCOPE,
+  WALLET_ASSET_STATUS_SOURCE,
+  WALLET_ASSET_STATUS_THRESHOLD_CURRENCY,
+  WALLET_ASSET_STATUS_THRESHOLD_USD,
+  evaluateWalletAssetStatus,
+  getWalletAssetStatusCurrency,
+  isWalletAssetStatusAggregationComplete,
+  shouldReportWalletAssetStatusChange,
+  shouldReportWalletAssetStatusSnapshot,
+} from './assetStatusAnalytics';
+
 const networkIdsMap = getNetworkIdsMap();
 
 type ITokenSelectorFilterMode = 'wallet-token' | 'lp-dapp-token';
@@ -128,6 +146,13 @@ type ITokenSelectorFilterMode = 'wallet-token' | 'lp-dapp-token';
 type IAllNetworkTokenListResp = IFetchAccountTokensResp & {
   tokenSelectorFilterMode: ITokenSelectorFilterMode;
   syncTokenFilterToOverview: boolean;
+  // Active owner at request time. `updateAllNetworksTokenList` reprocesses
+  // the retained `allNetworksResult` whenever its identity changes — which
+  // includes owner switches, where the result still belongs to the PREVIOUS
+  // owner (usePromiseResult keeps the last resolved value). These fields let
+  // it refuse to stamp the new owner over another owner's data.
+  ownerAccountId?: string;
+  ownerNetworkId?: string;
 };
 
 type IActiveAccountTokenListRequestContext = {
@@ -189,9 +214,11 @@ function TokenListBlock({
   const [shouldAlwaysFetch, setShouldAlwaysFetch] = useState(false);
   const [tokenSelectorFilter, setTokenSelectorFilter] =
     useTokenSelectorFilterPersistAtom();
+  const isDeFiEnabled = useIsDeFiEnabled(network?.id);
   const showLpTokenFilterSwitch =
     isTokenSelectorDappTokenFilterSupportedNetwork({
       network,
+      isDeFiEnabled,
     });
   const showLpTokensOnly = showLpTokenFilterSwitch
     ? tokenSelectorFilter.homeShowLpTokensOnly
@@ -810,6 +837,29 @@ function TokenListBlock({
 
   const isAllNetworkManualRefresh = useRef(false);
 
+  // Active-owner snapshot as of this instance's LAST RENDER (stale while the
+  // tab is frozen — matching the equally stale closures it is compared
+  // against, so the guard never misfires under freeze). In-flight async
+  // writers' closures capture the owner a request was issued FOR; comparing
+  // them against this ref lets post-await write paths drop stale cross-owner
+  // responses (detached history-loop refreshes, un-aborted fetches from a
+  // previous owner) instead of writing over atoms already cleared and
+  // re-stamped for the new owner.
+  const activeOwnerRef = useRef<{ accountId?: string; networkId?: string }>({});
+  activeOwnerRef.current = { accountId: account?.id, networkId: network?.id };
+
+  // Mirror of `allTokenListAtom`'s owner stamp, kept in a ref so callbacks
+  // (e.g. `handleClearAllNetworkData`) can consult it without taking the
+  // atom value — whose identity changes on every write — as a dependency.
+  const allTokenListStampRef = useRef<{
+    accountId?: string;
+    networkId?: string;
+  }>({});
+  allTokenListStampRef.current = {
+    accountId: allTokenListAtomValue.accountId,
+    networkId: allTokenListAtomValue.networkId,
+  };
+
   const updateAllNetworkData = useThrottledCallback(() => {
     refreshTokenList({
       keys: tokenListRef.current.keys,
@@ -875,6 +925,10 @@ function TokenListBlock({
         ...response,
         tokenSelectorFilterMode: 'wallet-token',
         syncTokenFilterToOverview,
+        // Closure values — this callback is recreated per owner, so these are
+        // the owner this request was issued for.
+        ownerAccountId: account?.id,
+        ownerNetworkId: network?.id,
       };
 
       const aggregateTokenConfigMapRawData =
@@ -973,7 +1027,20 @@ function TokenListBlock({
       }
       r.allTokens = allTokens;
 
-      if (!allNetworkDataInit && r.isSameAllNetworksAccountData) {
+      // The active owner may have changed during the awaits above (detached
+      // history-loop refresh, un-aborted fetch from a previous owner). Writing
+      // would land this owner's data on atoms already cleared and re-stamped
+      // for the new owner — and the next same-owner stamp write would then
+      // vouch for it.
+      const isStaleOwnerRequest = () =>
+        activeOwnerRef.current.accountId !== account?.id ||
+        activeOwnerRef.current.networkId !== network?.id;
+
+      if (
+        !allNetworkDataInit &&
+        r.isSameAllNetworksAccountData &&
+        !isStaleOwnerRequest()
+      ) {
         const accountWorth = sumTokenGroupsFiatValueIgnoringUnavailable(r);
         let createAtNetworkWorth = '0';
 
@@ -1020,6 +1087,12 @@ function TokenListBlock({
             networkId,
           })
         ).mergeDeriveAssetsEnabled;
+
+        // Re-check after the await above — the owner can switch mid-flight.
+        if (isStaleOwnerRequest()) {
+          isAllNetworkManualRefresh.current = false;
+          return r;
+        }
 
         tokenListRef.current.tokens = tokenListRef.current.tokens.concat([
           ...r.tokens.data,
@@ -1131,6 +1204,40 @@ function TokenListBlock({
   const handleClearAllNetworkData = useCallback(() => {
     const emptyTokens = getEmptyTokenData();
 
+    // Cancel the pending throttled flush and discard its accumulation —
+    // otherwise a trailing `updateAllNetworkData` fires after this clear and
+    // merges the previous owner's tokens into the freshly stamped-empty list
+    // (the owner stamp written below would then claim that data is current).
+    updateAllNetworkData.cancel();
+    tokenListRef.current.tokens = [];
+    tokenListRef.current.keys = '';
+    tokenListRef.current.map = {};
+    riskyTokenListRef.current.tokens = [];
+    riskyTokenListRef.current.keys = '';
+    riskyTokenListRef.current.map = {};
+
+    // Aggregate-token keys are owner-independent (commonSymbol-based), so a
+    // leftover map from ANOTHER owner would resolve that owner's balances for
+    // the new owner's aggregate rows until the first fresh response replaces
+    // it. Only clear on a true owner mismatch: when the stamp already matches
+    // (same-owner re-init via the useAllNetwork runner) the maps hold this
+    // owner's own values, and wiping them would only blank aggregate-row
+    // balances until the refetch lands. Note the stamp ref is a render
+    // snapshot, one commit stale at the first post-switch clear — so that
+    // first clear always sees a mismatch and clears; the failure direction
+    // is an extra clear, never a false skip.
+    if (
+      allTokenListStampRef.current.accountId !== account?.id ||
+      allTokenListStampRef.current.networkId !== network?.id
+    ) {
+      refreshAggregateTokensMap({
+        tokens: {},
+      });
+      refreshAggregateTokensListMap({
+        tokens: {},
+      });
+    }
+
     refreshSmallBalanceTokensFiatValue({
       value: '0',
     });
@@ -1172,6 +1279,8 @@ function TokenListBlock({
   }, [
     account?.id,
     network?.id,
+    refreshAggregateTokensListMap,
+    refreshAggregateTokensMap,
     refreshAllTokenList,
     refreshAllTokenListMap,
     refreshRiskyTokenList,
@@ -1181,6 +1290,7 @@ function TokenListBlock({
     refreshSmallBalanceTokensFiatValue,
     refreshTokenList,
     refreshTokenListMap,
+    updateAllNetworkData,
   ]);
 
   const handleAllNetworkRequestsFinished = useCallback(
@@ -1672,6 +1782,18 @@ function TokenListBlock({
       ) {
         return;
       }
+      // This callback's identity changes on owner switch, re-firing the
+      // consuming effect while `allNetworksResult` still holds the PREVIOUS
+      // owner's completed fan-out (usePromiseResult keeps the last resolved
+      // value). Reprocessing it would replace every token atom with that
+      // owner's data, write its worth under the new owner's accountId, and
+      // stamp `allTokenList` with the new owner — vouching for foreign data.
+      if (
+        allNetworksResult[0].ownerAccountId !== account?.id ||
+        allNetworksResult[0].ownerNetworkId !== network?.id
+      ) {
+        return;
+      }
       const shouldSyncTokenFilterToOverview =
         allNetworksResult[0].syncTokenFilterToOverview;
 
@@ -1753,7 +1875,6 @@ function TokenListBlock({
         });
 
         const accountWorth = sumTokenGroupsFiatValueIgnoringUnavailable(r);
-
         accountsWorth[
           accountUtils.buildAccountValueKey({
             accountId: r.accountId ?? '',
@@ -1769,6 +1890,124 @@ function TokenListBlock({
               account.createAtNetwork === r.networkId))
         ) {
           createAtNetworkWorth = createAtNetworkWorth.plus(accountWorth);
+        }
+      }
+
+      const assetStatusAggregationComplete =
+        isWalletAssetStatusAggregationComplete({
+          expectedAccounts: allNetworkAccounts,
+          result: allNetworksResult,
+        });
+      const assetStatusCurrency =
+        getWalletAssetStatusCurrency(allNetworksResult);
+      if (
+        assetStatusAggregationComplete &&
+        assetStatusCurrency?.toLowerCase() === USD_CURRENCY_ID
+      ) {
+        const reportNow = Date.now();
+        const assetStatusAnalytics =
+          await backgroundApiProxy.simpleDb.appStatus.getWalletAssetStatusAnalytics();
+        const { wallets: eligibleWallets } =
+          await backgroundApiProxy.serviceAccount.getAllHdHwQrWallets({
+            includingAccounts: true,
+          });
+        const eligibleAccountIds = Array.from(
+          new Set(
+            eligibleWallets.flatMap((eligibleWallet) =>
+              (eligibleWallet.dbIndexedAccounts ?? []).map(
+                (indexedAccountItem) => indexedAccountItem.id,
+              ),
+            ),
+          ),
+        );
+
+        if (eligibleAccountIds.length) {
+          const accountValues =
+            await backgroundApiProxy.serviceAccountProfile.getAllNetworkAccountsValueByAccountIdBatch(
+              {
+                accounts: eligibleAccountIds.map((accountId) => ({
+                  accountId,
+                })),
+              },
+            );
+          const currentAccountValueId =
+            indexedAccount?.id ?? account?.indexedAccountId;
+          const currentAccountValue =
+            currentAccountValueId &&
+            eligibleAccountIds.includes(currentAccountValueId)
+              ? {
+                  accountId: currentAccountValueId,
+                  value: accountsWorth,
+                  currency: USD_CURRENCY_ID,
+                }
+              : undefined;
+          const assetStatusEvaluation = evaluateWalletAssetStatus({
+            accountValues,
+            currentAccountValue,
+            eligibleWalletCount: eligibleWallets.length,
+          });
+
+          if (
+            assetStatusEvaluation.assetStatus &&
+            assetStatusEvaluation.balanceBucket &&
+            assetStatusEvaluation.changeReason
+          ) {
+            const baseParams = {
+              source: WALLET_ASSET_STATUS_SOURCE,
+              scope: WALLET_ASSET_STATUS_SCOPE,
+              assetStatus: assetStatusEvaluation.assetStatus,
+              balanceBucket: assetStatusEvaluation.balanceBucket,
+              thresholdUsd: WALLET_ASSET_STATUS_THRESHOLD_USD,
+              thresholdCurrency: WALLET_ASSET_STATUS_THRESHOLD_CURRENCY,
+              assetBasis: WALLET_ASSET_STATUS_BASIS,
+              eligibleWalletTypes: WALLET_ASSET_STATUS_ELIGIBLE_WALLET_TYPES,
+              eligibleWalletCount: assetStatusEvaluation.eligibleWalletCount,
+              eligibleAccountCount: assetStatusEvaluation.eligibleAccountCount,
+              knownAccountCount: assetStatusEvaluation.knownAccountCount,
+              unknownAccountCount: assetStatusEvaluation.unknownAccountCount,
+            } as const;
+            const shouldReportSnapshot = shouldReportWalletAssetStatusSnapshot({
+              lastReportedAt: assetStatusAnalytics?.lastSnapshotReportedAt,
+              now: reportNow,
+            });
+            const shouldReportChange = shouldReportWalletAssetStatusChange({
+              previousStatus: assetStatusAnalytics?.assetStatus,
+              currentStatus: assetStatusEvaluation.assetStatus,
+            });
+
+            if (shouldReportSnapshot) {
+              defaultLogger.wallet.balance.walletAssetStatusEvaluated(
+                baseParams,
+              );
+            }
+            if (shouldReportChange) {
+              defaultLogger.wallet.balance.walletAssetStatusChanged({
+                ...baseParams,
+                previousStatus: assetStatusAnalytics?.assetStatus ?? 'unknown',
+                currentStatus: assetStatusEvaluation.assetStatus,
+                changeReason: assetStatusEvaluation.changeReason,
+              });
+            }
+
+            if (
+              shouldReportSnapshot ||
+              shouldReportChange ||
+              assetStatusAnalytics?.assetStatus !==
+                assetStatusEvaluation.assetStatus
+            ) {
+              await backgroundApiProxy.simpleDb.appStatus.setWalletAssetStatusAnalytics(
+                {
+                  assetStatus: assetStatusEvaluation.assetStatus,
+                  lastSnapshotReportedAt: shouldReportSnapshot
+                    ? reportNow
+                    : assetStatusAnalytics?.lastSnapshotReportedAt,
+                  lastStatusChangedAt: shouldReportChange
+                    ? reportNow
+                    : assetStatusAnalytics?.lastStatusChangedAt,
+                },
+              );
+            }
+          }
         }
       }
 
@@ -1906,8 +2145,10 @@ function TokenListBlock({
   }, [
     account?.createAtNetwork,
     account?.id,
+    account?.indexedAccountId,
     indexedAccount?.id,
     mergeDeriveAddressData,
+    allNetworkAccounts,
     allNetworksResult,
     network?.id,
     refreshAllTokenList,
@@ -1989,11 +2230,12 @@ function TokenListBlock({
     refreshAllTokenListMap({ tokens: cached.tokenListMap });
     // Restore the aggregate-token source map so cached aggregate tokens
     // render against their own balances/prices instead of the previous
-    // owner's map. Older entries without it leave the atom alone — the
-    // async fetch below will refill it.
-    if (cached.aggregateTokensMap) {
-      refreshAggregateTokensMap({ tokens: cached.aggregateTokensMap });
-    }
+    // owner's map. Legacy entries persisted without it must CLEAR the atom
+    // rather than leave it alone: aggregate keys are owner-independent
+    // (commonSymbol-based), so the previous owner's balances would otherwise
+    // resolve under the fresh owner stamp written above until the async
+    // fetch refills the map.
+    refreshAggregateTokensMap({ tokens: cached.aggregateTokensMap ?? {} });
     // The cache only stores the high-value `tokens` and `tokenListMap`.
     // Reset small-balance and risky atoms here so the footer counts/value
     // and risky list don't briefly mirror the previous owner until the
@@ -2531,14 +2773,180 @@ function TokenListBlock({
     },
   );
 
+  // Imperatively refresh the single-network wallet token list for an
+  // explicitly provided account/network. Used when a refresh is emitted from
+  // another home tab right after a network switch: this list may be frozen
+  // (inactive tab), so its own `run` closures still point at the previous
+  // network. Driving the fetch from explicit params lets the always-visible
+  // header worth (and the shared token-list atoms) update to the new network
+  // without waiting for the user to return to this tab.
+  const explicitRefreshSeqRef = useRef(0);
+  const refreshSingleNetworkTokenListByTarget = useCallback(
+    async (target: {
+      accountId: string;
+      networkId: string;
+      indexedAccountId?: string;
+    }) => {
+      const { accountId, networkId, indexedAccountId } = target;
+      if (!accountId || !networkId) return;
+      // All-networks aggregation is driven by a separate, closure-bound hook
+      // that cannot be refreshed imperatively here; let it refresh on return.
+      if (networkUtils.isAllNetwork({ networkId })) return;
+
+      const seq = (explicitRefreshSeqRef.current += 1);
+      const isLatest = () => explicitRefreshSeqRef.current === seq;
+
+      let emittedRefreshing = false;
+      try {
+        // Multi-derive (merge-derive) HD accounts need the parallel
+        // per-derivation fetch that only `run` performs; the single-account
+        // fast path below would apply partial data, so skip them. Others
+        // accounts (imported/watch-only) are always single-address even on
+        // merge-derive networks, so they can safely use the fast path here.
+        const targetVaultSettings =
+          await backgroundApiProxy.serviceNetwork.getVaultSettings({
+            networkId,
+          });
+        if (
+          targetVaultSettings?.mergeDeriveAssetsEnabled &&
+          !accountUtils.isOthersAccount({ accountId })
+        ) {
+          return;
+        }
+        if (!isLatest()) return;
+
+        appEventBus.emit(EAppEventBusNames.TabListStateUpdate, {
+          isRefreshing: true,
+          type: EHomeTab.TOKENS,
+          accountId,
+          networkId,
+        });
+        emittedRefreshing = true;
+
+        // Cancel any superseded in-flight wallet token fetch (e.g. a request
+        // for the previous network) so its late response can't clobber this
+        // network's data. Mirrors the abort in the closure-bound `run` path;
+        // the seq guard alone only coordinates between explicit refreshes.
+        await backgroundApiProxy.serviceToken.abortFetchAccountTokens({
+          excludedFlags: ['token-selector'],
+        });
+        if (!isLatest()) return;
+
+        const r = await backgroundApiProxy.serviceToken.fetchAccountTokens({
+          accountId,
+          mergeTokens: true,
+          networkId,
+          flag: 'home-token-list',
+          saveToLocal: true,
+          indexedAccountId,
+          ...walletTokenFilterParams,
+        });
+
+        // A newer switch superseded this fetch; drop the stale body so it
+        // can't clobber the latest network's data.
+        if (!isLatest()) return;
+
+        const accountWorth = sumTokenGroupsFiatValueIgnoringUnavailable(r);
+        updateAccountOverviewState({ isRefreshing: false, initialized: true });
+        updateAccountWorth({
+          accountId,
+          initialized: true,
+          worth: {
+            [accountUtils.buildAccountValueKey({ accountId, networkId })]:
+              accountWorth,
+          },
+          createAtNetworkWorth: accountWorth,
+          merge: false,
+        });
+
+        refreshTokenList({ keys: r.tokens.keys, tokens: r.tokens.data });
+        refreshTokenListMap({
+          tokens: {
+            ...r.tokens.map,
+            ...r.smallBalanceTokens.map,
+            ...r.riskTokens.map,
+          },
+        });
+        refreshRiskyTokenList({
+          keys: r.riskTokens.keys,
+          riskyTokens: r.riskTokens.data,
+        });
+        refreshRiskyTokenListMap({ tokens: r.riskTokens.map });
+        refreshSmallBalanceTokenList({
+          keys: r.smallBalanceTokens.keys,
+          smallBalanceTokens: r.smallBalanceTokens.data,
+        });
+        refreshSmallBalanceTokenListMap({ tokens: r.smallBalanceTokens.map });
+        refreshSmallBalanceTokensFiatValue({
+          value: r.smallBalanceTokens.fiatValue ?? '0',
+        });
+        if (r.allTokens) {
+          refreshAllTokenList({
+            keys: r.allTokens.keys,
+            tokens: r.allTokens.data,
+            accountId,
+            networkId,
+          });
+          refreshAllTokenListMap({ tokens: r.allTokens.map });
+          // Keep the broader local token directory in sync, like `run` does;
+          // `saveToLocal` only persists the per-account token cache.
+          const mergedTokens = r.allTokens.data;
+          if (mergedTokens && mergedTokens.length) {
+            void backgroundApiProxy.serviceToken.updateLocalTokens({
+              networkId,
+              tokens: mergedTokens,
+            });
+          }
+        }
+        updateTokenListState({ initialized: true, isRefreshing: false });
+      } catch (e) {
+        if (!(e instanceof CanceledError)) {
+          throw e;
+        }
+      } finally {
+        if (emittedRefreshing) {
+          appEventBus.emit(EAppEventBusNames.TabListStateUpdate, {
+            isRefreshing: false,
+            type: EHomeTab.TOKENS,
+            accountId,
+            networkId,
+          });
+        }
+      }
+    },
+    [
+      walletTokenFilterParams,
+      updateAccountOverviewState,
+      updateAccountWorth,
+      refreshTokenList,
+      refreshTokenListMap,
+      refreshRiskyTokenList,
+      refreshRiskyTokenListMap,
+      refreshSmallBalanceTokenList,
+      refreshSmallBalanceTokenListMap,
+      refreshSmallBalanceTokensFiatValue,
+      refreshAllTokenList,
+      refreshAllTokenListMap,
+      updateTokenListState,
+    ],
+  );
+
   useEffect(() => {
     const refresh = (
-      params:
-        | {
-            accounts: { accountId: string; networkId: string }[];
-          }
-        | undefined,
+      params: IAppEventBusPayload[EAppEventBusNames.RefreshTokenList],
     ) => {
+      // A flagged payload (emitted from another home tab right after a network
+      // switch) asks this list to refresh against the provided account/network.
+      // This list may be frozen with a stale network in its closures, so honor
+      // the explicit target instead of falling through to the closure-bound
+      // `run` / all-networks paths.
+      if (params?.refreshByProvidedAccounts) {
+        const target = params.accounts?.[0];
+        if (target) {
+          void refreshSingleNetworkTokenListByTarget(target);
+        }
+        return;
+      }
       if (network?.isAllNetworks) {
         if (params?.accounts) {
           void handleRefreshAllNetworkDataByAccounts(params.accounts);
@@ -2549,7 +2957,7 @@ function TokenListBlock({
           }
         }
       } else {
-        void run();
+        void run({ alwaysSetState: true });
         if (showLpTokensOnly) {
           void runLpTokenList({ alwaysSetState: true });
         }
@@ -2577,6 +2985,7 @@ function TokenListBlock({
     run,
     runAllNetworksRequests,
     runLpTokenList,
+    refreshSingleNetworkTokenListByTarget,
     showLpTokensOnly,
   ]);
 

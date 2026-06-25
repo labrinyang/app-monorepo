@@ -129,6 +129,34 @@ function networkFieldsContainKeyword(
   );
 }
 
+const tokenSearchKeywordAliasMap: Record<string, string[]> = {
+  eth: ['ether'],
+};
+
+export function buildTokenSearchKeywordQueries(keywords?: string): string[] {
+  const trimmedKeywords = keywords?.trim();
+  if (!trimmedKeywords) {
+    return [];
+  }
+
+  const searchTerms = trimmedKeywords.split(/\s+/).filter(Boolean);
+  if (searchTerms.length < 2) {
+    return [trimmedKeywords];
+  }
+
+  const queries = new Set<string>([trimmedKeywords]);
+  searchTerms.forEach((term, index) => {
+    const aliases = tokenSearchKeywordAliasMap[term.toLowerCase()];
+    aliases?.forEach((alias) => {
+      const nextTerms = [...searchTerms];
+      nextTerms[index] = alias;
+      queries.add(nextTerms.join(' '));
+    });
+  });
+
+  return Array.from(queries);
+}
+
 enum ESearchStrength {
   BOTH = 1,
   NETWORK_ONLY = 2,
@@ -264,15 +292,11 @@ export function getFilteredTokenBySearchKey({
       }
 
       if (matchedSubs.length > 0) {
-        const hasNetworkOnlyHit = matchedSubs.some(
-          (s) => s.strength === ESearchStrength.NETWORK_ONLY,
+        const networkQualifiedMatches = matchedSubs.filter(
+          (s) => s.strength !== ESearchStrength.TOKEN_ONLY,
         );
-        if (hasNetworkOnlyHit) {
-          results.push(
-            ...matchedSubs.filter(
-              (s) => s.strength !== ESearchStrength.TOKEN_ONLY,
-            ),
-          );
+        if (networkQualifiedMatches.length > 0) {
+          results.push(...networkQualifiedMatches);
         } else {
           results.push({
             token,
@@ -700,6 +724,13 @@ export function flattenAggregateTokensMap(aggregateTokensMap: {
       fiatValue: '0',
       price: firstEntry.price,
       price24h: firstEntry.price24h,
+      // Inherit the currency basis from the source entries (all network
+      // entries are normalized to the same basis, 'usd', before aggregation).
+      // Without it the flattened entry has `currency: undefined`, so
+      // <Currency sourceCurrency> falls back to the display currency and skips
+      // the USD -> display conversion — leaving aggregated tokens (ETH, USDT,
+      // USDC) showing raw USD numbers under a non-USD symbol.
+      currency: firstEntry.currency,
     };
 
     networkEntries.forEach((tokenFiat) => {

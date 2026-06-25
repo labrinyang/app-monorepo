@@ -67,24 +67,11 @@ export const HARDWARE_ERROR_DIALOG_TYPES = {
 // Hardware error dialog event payload type
 export interface IHardwareErrorDialogPayload {
   errorType: string; // Extensible but type-safe error types
+  vendor?: EHardwareVendor | string;
   payload?: IOneKeyHardwareErrorPayload | Record<string, unknown>; // Original error payload with type safety
   errorCode?: number | string; // Hardware error code
   errorMessage?: string; // Error message
 }
-
-export type IThirdPartyHardwareRecoveryAction = {
-  type: 'ledger_app_install_required';
-  vendor: EHardwareVendor;
-  connectId: string;
-  appName: string;
-  source?:
-    | 'batchCreateAccount'
-    | 'createAccount'
-    | 'sign'
-    | 'onboarding'
-    | 'unknown';
-  silent?: boolean;
-};
 
 export enum EFinalizeWalletSetupSteps {
   // Regular wallet steps
@@ -117,6 +104,9 @@ export interface IAppEventBusPayload {
     othersWalletAccountId?: string;
   };
   [EAppEventBusNames.LocalSystemTimeInvalid]: undefined;
+  [EAppEventBusNames.LocalSystemTimeStatusChanged]: {
+    status: 'VALID' | 'INVALID' | 'UNKNOWN';
+  };
   [EAppEventBusNames.ShowDialogLoading]: IDialogLoadingProps;
   [EAppEventBusNames.HideDialogLoading]: undefined;
   [EAppEventBusNames.WalletClear]: undefined;
@@ -138,6 +128,7 @@ export interface IAppEventBusPayload {
     fromAmount: string;
     toAmount: string;
   };
+  [EAppEventBusNames.SwapStockTokenSelected]: ISwapToken;
   [EAppEventBusNames.WalletRemove]: {
     walletId: string;
   };
@@ -292,12 +283,23 @@ export interface IAppEventBusPayload {
         accounts: {
           accountId: string;
           networkId: string;
+          // Stable across network switches for HD accounts; forwarded so a
+          // frozen token list (whose own `indexedAccount` closure may be
+          // stale) resolves aggregate hidden/custom tokens against the right
+          // indexed account. Undefined for Others (imported/watch-only).
+          indexedAccountId?: string;
         }[];
+        // When true, the home token list refreshes strictly against the
+        // provided account/network instead of its own active account. Used by
+        // emitters from a different home tab right after a network switch,
+        // when the (inactive) token list is frozen and its closures still
+        // point at the previous network.
+        refreshByProvidedAccounts?: boolean;
       };
-  [EAppEventBusNames.RefreshEarnRecommendedList]: undefined;
   [EAppEventBusNames.RefreshHistoryList]: undefined;
   [EAppEventBusNames.RefreshApprovalList]: undefined;
   [EAppEventBusNames.RefreshBookmarkList]: undefined;
+  [EAppEventBusNames.InvalidateDiscoveryHomeBookmarksPrefetch]: undefined;
   [EAppEventBusNames.TabListStateUpdate]: {
     isRefreshing: boolean;
     type: EHomeTab;
@@ -342,6 +344,10 @@ export interface IAppEventBusPayload {
     fromToken?: ISwapToken;
     toToken?: ISwapToken;
   };
+  // De-facto "network list changed, refresh" signal. Emitted not only when a
+  // custom network is added/removed, but also after a server-network sync that
+  // changes the set (e.g. a network delisted to TRASH). All network selectors
+  // listen to it to re-pull their network list.
   [EAppEventBusNames.AddedCustomNetwork]: undefined;
   [EAppEventBusNames.SyncDappAccountToHomeAccount]: {
     selectedAccount: IAccountSelectorSelectedAccount;
@@ -387,16 +393,6 @@ export interface IAppEventBusPayload {
     vendor: EHardwareVendor;
     reason: EThirdPartyDevicePermissionDeniedReason;
   };
-  [EAppEventBusNames.ThirdPartyHardwareAppInstallProgress]: {
-    vendor: EHardwareVendor;
-    connectId: string;
-    appName: string;
-    /** 0..1 install progress reported by DMK. */
-    progress: number;
-    /** DMK UserInteractionRequired (e.g. 'allow-secure-connection'). */
-    requiredUserInteraction?: string;
-  };
-  [EAppEventBusNames.ThirdPartyHardwareRecoveryAction]: IThirdPartyHardwareRecoveryAction;
   [EAppEventBusNames.RequestDeviceInBootloaderForWebDevice]: undefined;
   [EAppEventBusNames.RequestDeviceForSwitchFirmwareWebDevice]: undefined;
   [EAppEventBusNames.EnabledNetworksChanged]: undefined;
@@ -416,6 +412,8 @@ export interface IAppEventBusPayload {
   [EAppEventBusNames.MarketWSDataUpdate]: {
     channel: string;
     tokenAddress: string;
+    networkId?: string;
+    isSubscriptionAmbiguous?: boolean;
     messageType?: string;
     data: any;
     originalData?: any;
@@ -471,6 +469,11 @@ export interface IAppEventBusPayload {
   [EAppEventBusNames.ShowFallbackUpdateDialog]: {
     version: string | null | undefined;
   };
+  [EAppEventBusNames.StartAutoDownloadUpdate]: {
+    // The resolved update decision (jsBundleUpgrade / appShellUpdate /
+    // jsBundleRollback) — carried for foreground logging / diagnostics only.
+    decision: string;
+  };
   [EAppEventBusNames.PendingInstallTaskProcessFinished]: undefined;
   [EAppEventBusNames.ShowNotificationViewDialog]: {
     payload: INotificationViewDialogPayload;
@@ -494,6 +497,7 @@ export interface IAppEventBusPayload {
   [EAppEventBusNames.UpdateNotificationBadge]: undefined;
   [EAppEventBusNames.BtcFreshAddressUpdated]: undefined;
   [EAppEventBusNames.BtcFreshAddressConnectDappRejected]: undefined;
+  [EAppEventBusNames.BtcFindAddressUpdated]: undefined;
   [EAppEventBusNames.ClientLogUploadProgress]: {
     stage: ELogUploadStage;
     progressPercent?: number;

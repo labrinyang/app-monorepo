@@ -72,7 +72,6 @@ interface ISwapProContainerProps {
     supportSpeedSwap?: boolean;
     isMEV?: boolean;
     hasEnoughBalance: boolean;
-    onlySupportCrossChain: boolean;
   };
 }
 
@@ -97,7 +96,6 @@ const SwapProContainer = ({
     isMEV,
     hasEnoughBalance,
     supportSpeedSwap,
-    onlySupportCrossChain,
   } = config;
   const [refreshing, setRefreshing] = useState(false);
   const [limitPriceUseMarketPrice, setLimitPriceUseMarketPrice] = useState({
@@ -311,7 +309,6 @@ const SwapProContainer = ({
           {shouldRenderHeavyComponents ? (
             <SwapProTradingPanel
               supportSpeedSwap={!!supportSpeedSwap}
-              onlySupportCrossChain={onlySupportCrossChain}
               swapProConfig={speedConfig}
               configLoading={isLoading}
               balanceLoading={balanceLoading}
@@ -350,15 +347,13 @@ const SwapProContainer = ({
         title={swapProErrorAlert?.title}
         message={swapProErrorAlert?.message}
       />
-      {shouldRenderHeavyComponents ? (
-        <SwapProTabListContainer
-          onTokenPress={onTokenPressCallback}
-          onOpenOrdersClick={onOpenOrdersClick}
-          onSearchClick={onSearchClickCallback}
-          supportNetworksList={supportNetworksList}
-          disableDelayRender
-        />
-      ) : null}
+      <SwapProTabListContainer
+        onTokenPress={onTokenPressCallback}
+        onOpenOrdersClick={onOpenOrdersClick}
+        onSearchClick={onSearchClickCallback}
+        supportNetworksList={supportNetworksList}
+        disableDelayRender={shouldRenderHeavyComponents}
+      />
     </ScrollView>
   );
 };

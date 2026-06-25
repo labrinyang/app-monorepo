@@ -712,6 +712,39 @@ function pickXpubFromDBAccount(account: unknown): string | undefined {
   return a.xpubSegwit || a.xpub;
 }
 
+// Returns true if a per-account local-assets storage key still belongs to a
+// valid (non-deleted) owner. Keys built by `buildAccountLocalAssetsKey` /
+// `buildLocalAggregateTokenMapKey` are either `${networkId}_${owner}` (owner =
+// lowercased address / xpub / accountId) or a bare `${owner}` (all-networks
+// aggregate keys with no networkId prefix). networkId uses `--` as its own
+// separator and never contains `_`, so the owner is exactly the substring after
+// the first `_`. Used by the ServiceAppCleanup orphan sweep; the failure mode of
+// over-matching (keeping an orphan) or under-matching (dropping a live cache key)
+// is benign — these maps are pure caches that the normal refresh repopulates —
+// but we still match precisely to avoid needless cache churn on live accounts.
+function isLocalAssetsKeyOwnedBy({
+  key,
+  validOwners,
+}: {
+  key: string;
+  validOwners: Set<string>;
+}): boolean {
+  const lower = key.toLowerCase();
+  // bare owner key (e.g. all-networks aggregate / accountValue.allByAddress)
+  if (validOwners.has(lower)) {
+    return true;
+  }
+  // networkId-prefixed key: owner is everything after the first underscore
+  const underscoreIndex = lower.indexOf('_');
+  if (
+    underscoreIndex >= 0 &&
+    validOwners.has(lower.slice(underscoreIndex + 1))
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function isAccountCompatibleWithNetwork({
   account,
   networkId,
@@ -1127,14 +1160,6 @@ function isEnabledBtcFreshAddress({
   return false;
 }
 
-function buildKeylessWalletId({
-  sharePackSetId,
-}: {
-  sharePackSetId: string;
-}): string {
-  return `${WALLET_TYPE_HD}-keyless-${sharePackSetId}`;
-}
-
 function buildHdWalletHash({ mnemonic }: { mnemonic: string }): string {
   const text = `${mnemonic}--${HD_WALLET_HASH_SALT}`;
   return bufferUtils.bytesToHex(
@@ -1173,16 +1198,6 @@ function isKeylessAccount({ accountId }: { accountId: string }): boolean {
   return isKeylessWallet({ walletId });
 }
 
-function getKeylessWalletPackSetId({ walletId }: { walletId: string }): string {
-  const packSetId = walletId.split(`${WALLET_TYPE_HD}-keyless-`)[1];
-  if (!packSetId) {
-    throw new OneKeyLocalError(
-      'getKeylessWalletPackSetId ERROR: packSetId is empty',
-    );
-  }
-  return packSetId;
-}
-
 // ---- Bot Wallet ID utilities ----
 
 function buildBotWalletId({
@@ -1209,14 +1224,6 @@ function isBotAccount({ accountId }: { accountId: string }): boolean {
 }
 
 // ---- End Bot Wallet ID utilities ----
-
-function buildKeylessDevicePackKey({
-  packSetId,
-}: {
-  packSetId: string;
-}): string {
-  return `OneKey_Keyless__${packSetId}`;
-}
 
 function buildKeylessMnemonicPasswordKey({
   ownerId,
@@ -1324,12 +1331,9 @@ export default {
   URL_ACCOUNT_ID,
   HYPERLIQUID_AGENT_CREDENTIAL_PREFIX,
 
-  getKeylessWalletPackSetId,
-  buildKeylessDevicePackKey,
   buildKeylessMnemonicPasswordKey,
   buildKeylessRefreshTokenKey,
   buildKeylessTokenKey,
-  buildKeylessWalletId,
   buildHdWalletHash,
   buildKeylessWalletIdV2,
   buildAccountValueKey,
@@ -1410,6 +1414,7 @@ export default {
   buildHiddenWalletName,
   buildAccountLocalAssetsKey,
   pickXpubFromDBAccount,
+  isLocalAssetsKeyOwnedBy,
   buildTonMnemonicCredentialId,
   getAccountIdFromTonMnemonicCredentialId,
   buildHyperLiquidAgentCredentialId,

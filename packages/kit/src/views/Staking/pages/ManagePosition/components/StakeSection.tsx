@@ -64,6 +64,7 @@ export const StakeSection = ({
   onSuccess,
   beforeFooter,
   showApyDetail,
+  suppressPlatformBonus,
   isInModalContext,
   fallbackTokenImageUri,
   protocolSwitchConfig,
@@ -88,6 +89,7 @@ export const StakeSection = ({
   onSuccess?: () => void;
   beforeFooter?: ReactElement | null;
   showApyDetail?: boolean;
+  suppressPlatformBonus?: boolean;
   isInModalContext?: boolean;
   fallbackTokenImageUri?: string;
   protocolSwitchConfig?: IManagePositionProtocolSwitchConfig;
@@ -837,6 +839,7 @@ export const StakeSection = ({
           }
           beforeFooter={beforeFooter}
           showApyDetail={showApyDetail}
+          suppressPlatformBonus={suppressPlatformBonus}
           isInModalContext={isInModalContext}
           protocolSwitchConfig={protocolSwitchConfig}
           ongoingValidator={ongoingValidator}

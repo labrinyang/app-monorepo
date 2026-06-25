@@ -15,13 +15,22 @@ import { handleLayoutUpdate } from './layoutUpdateHandler';
 
 import type { IMarksTimeRange, IMessageHandlerContext } from './types';
 import type { IWebViewRef } from '../../../WebView/types';
+import type { ITradingViewV2KLineDataFallback } from '../hooks/useTradingViewV2';
 import type {
   ICustomReceiveHandlerData,
   ITradingViewIndicatorsDialogData,
+  ITradingViewInteractionOverlayData,
+  ITradingViewIntervalConfigData,
+  ITradingViewNativeChartControlsConfigData,
+  ITradingViewPriceUpdateData,
   ITradingViewTouchScrollData,
 } from '../types';
 
 const DEFAULT_HYPERLIQUID_PRICE_SCALE = 100;
+const TRADINGVIEW_PRICE_UPDATE = 'tradingview_priceUpdate';
+const TRADINGVIEW_INTERVAL_CONFIG = 'tradingview_intervalConfig';
+const TRADINGVIEW_NATIVE_CHART_CONTROLS_CONFIG =
+  'tradingview_nativeChartControlsConfig';
 
 interface IUseTradingViewMessageHandlerParams {
   tokenAddress?: string;
@@ -32,10 +41,20 @@ interface IUseTradingViewMessageHandlerParams {
   tokenSymbol?: string;
   marksTimeRange?: React.MutableRefObject<IMarksTimeRange | null>;
   currentKLineResolution?: React.MutableRefObject<string>;
+  onCurrentKLineResolutionChange?: (resolution: string) => void;
   onTouchScroll?: (deltaY: number) => void;
   onIndicatorsDialogOpenChange?: (isOpen: boolean) => void;
+  onInteractionOverlayOpenChange?: (isOpen: boolean) => void;
   forceEmptyKLineData?: boolean;
   emptyKLineDataOnError?: boolean;
+  kLineDataFallback?: ITradingViewV2KLineDataFallback;
+  primaryKLineDataUnavailable?: boolean;
+  onPrimaryKLineDataUnavailable?: () => void;
+  onPriceUpdate?: (data: ITradingViewPriceUpdateData) => void;
+  onIntervalConfigChange?: (data: ITradingViewIntervalConfigData) => void;
+  onNativeChartControlsConfigChange?: (
+    data: ITradingViewNativeChartControlsConfigData,
+  ) => void;
 }
 
 async function handleGetHyperliquidPriceScale({
@@ -227,6 +246,320 @@ function getIndicatorsDialogOpenState(
   return undefined;
 }
 
+function getInteractionOverlayOpenState(
+  overlayData: ITradingViewInteractionOverlayData | undefined,
+): boolean | undefined {
+  if (typeof overlayData?.isOpen === 'boolean') {
+    return overlayData.isOpen;
+  }
+  if (overlayData?.action === 'open') {
+    return true;
+  }
+  if (overlayData?.action === 'close') {
+    return false;
+  }
+  return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function normalizeStringOptions(
+  options: unknown,
+): { label: string; value: string }[] | null {
+  if (!Array.isArray(options)) {
+    return null;
+  }
+
+  const normalizedOptions: { label: string; value: string }[] = [];
+  for (const option of options) {
+    if (!isRecord(option)) {
+      return null;
+    }
+
+    const label = typeof option.label === 'string' ? option.label.trim() : '';
+    const value = typeof option.value === 'string' ? option.value.trim() : '';
+    if (!label || !value) {
+      return null;
+    }
+
+    normalizedOptions.push({ label, value });
+  }
+
+  return normalizedOptions;
+}
+
+function normalizeIntervalConfig(
+  data: unknown,
+): ITradingViewIntervalConfigData | null {
+  if (!isRecord(data)) {
+    return null;
+  }
+
+  const intervals = normalizeStringOptions(data.intervals);
+  const activeInterval =
+    typeof data.activeInterval === 'string' ? data.activeInterval.trim() : '';
+  if (!intervals?.length || !activeInterval) {
+    return null;
+  }
+
+  return {
+    intervals,
+    activeInterval,
+    ...(typeof data.timestamp === 'number' && Number.isFinite(data.timestamp)
+      ? { timestamp: data.timestamp }
+      : {}),
+  };
+}
+
+function normalizeIndicators(
+  indicators: unknown,
+): ITradingViewNativeChartControlsConfigData['indicators'] | null {
+  const options = normalizeStringOptions(indicators);
+  if (!options) {
+    return null;
+  }
+
+  return options.map((option, index) => {
+    const rawIndicator = Array.isArray(indicators) ? indicators[index] : null;
+    return {
+      ...option,
+      ...(isRecord(rawIndicator) && typeof rawIndicator.active === 'boolean'
+        ? { active: rawIndicator.active }
+        : {}),
+    };
+  });
+}
+
+function normalizeChartTypes(
+  chartTypes: unknown,
+): ITradingViewNativeChartControlsConfigData['chartTypes'] | null {
+  if (!Array.isArray(chartTypes)) {
+    return null;
+  }
+
+  const normalizedChartTypes: ITradingViewNativeChartControlsConfigData['chartTypes'] =
+    [];
+  for (const chartType of chartTypes) {
+    if (!isRecord(chartType)) {
+      return null;
+    }
+
+    const label =
+      typeof chartType.label === 'string' ? chartType.label.trim() : '';
+    const value = Number(chartType.value);
+    if (!label || !Number.isFinite(value)) {
+      return null;
+    }
+
+    normalizedChartTypes.push({ label, value });
+  }
+
+  return normalizedChartTypes;
+}
+
+function normalizeResetLayout(
+  resetLayout: unknown,
+): ITradingViewNativeChartControlsConfigData['resetLayout'] | undefined {
+  if (!isRecord(resetLayout)) {
+    return undefined;
+  }
+
+  const label =
+    typeof resetLayout.label === 'string' ? resetLayout.label.trim() : '';
+  if (typeof resetLayout.enabled !== 'boolean' || !label) {
+    return undefined;
+  }
+
+  return {
+    enabled: resetLayout.enabled,
+    label,
+  };
+}
+
+type IPriceMarketCapConfig = NonNullable<
+  ITradingViewNativeChartControlsConfigData['priceMarketCap']
+>;
+
+function normalizePriceMarketCapOptions(
+  options: unknown,
+): IPriceMarketCapConfig['options'] | null {
+  if (!Array.isArray(options)) {
+    return null;
+  }
+
+  const normalizedOptions: IPriceMarketCapConfig['options'] = [];
+  for (const option of options) {
+    if (!isRecord(option)) {
+      return null;
+    }
+
+    const label = typeof option.label === 'string' ? option.label.trim() : '';
+    const value = option.value;
+    if (!label || (value !== 'price' && value !== 'marketcap')) {
+      return null;
+    }
+
+    normalizedOptions.push({ label, value });
+  }
+
+  return normalizedOptions;
+}
+
+function normalizePriceMarketCap(
+  priceMarketCap: unknown,
+): ITradingViewNativeChartControlsConfigData['priceMarketCap'] | undefined {
+  if (!isRecord(priceMarketCap)) {
+    return undefined;
+  }
+
+  const label =
+    typeof priceMarketCap.label === 'string' ? priceMarketCap.label.trim() : '';
+  const options = normalizePriceMarketCapOptions(priceMarketCap.options);
+  const activeMode = priceMarketCap.activeMode;
+  if (
+    typeof priceMarketCap.enabled !== 'boolean' ||
+    !label ||
+    !options ||
+    (activeMode !== 'price' && activeMode !== 'marketcap')
+  ) {
+    return undefined;
+  }
+
+  return {
+    enabled: priceMarketCap.enabled,
+    label,
+    options,
+    activeMode,
+  };
+}
+
+type IPriceScaleConfig = NonNullable<
+  ITradingViewNativeChartControlsConfigData['priceScale']
+>;
+
+function normalizePriceScaleOptions(
+  options: unknown,
+): IPriceScaleConfig['options'] | null {
+  if (!Array.isArray(options)) {
+    return null;
+  }
+
+  const normalizedOptions: IPriceScaleConfig['options'] = [];
+  for (const option of options) {
+    if (!isRecord(option)) {
+      return null;
+    }
+
+    const label = typeof option.label === 'string' ? option.label.trim() : '';
+    const value = option.value;
+    if (
+      !label ||
+      (value !== 'auto' && value !== 'log' && value !== 'percentage')
+    ) {
+      return null;
+    }
+
+    normalizedOptions.push({ label, value });
+  }
+
+  return normalizedOptions;
+}
+
+function normalizePriceScale(
+  priceScale: unknown,
+): ITradingViewNativeChartControlsConfigData['priceScale'] | undefined {
+  if (!isRecord(priceScale)) {
+    return undefined;
+  }
+
+  const label =
+    typeof priceScale.label === 'string' ? priceScale.label.trim() : '';
+  const options = normalizePriceScaleOptions(priceScale.options);
+  const activeMode = priceScale.activeMode;
+  if (
+    typeof priceScale.enabled !== 'boolean' ||
+    !label ||
+    !options ||
+    (activeMode !== 'auto' &&
+      activeMode !== 'log' &&
+      activeMode !== 'percentage')
+  ) {
+    return undefined;
+  }
+
+  return {
+    enabled: priceScale.enabled,
+    label,
+    options,
+    activeMode,
+  };
+}
+
+function normalizeNativeChartControlsConfig(
+  data: unknown,
+): ITradingViewNativeChartControlsConfigData | null {
+  if (!isRecord(data)) {
+    return null;
+  }
+
+  const indicators = normalizeIndicators(data.indicators);
+  const chartTypes = normalizeChartTypes(data.chartTypes);
+  const activeChartType = Number(data.activeChartType);
+  if (!indicators || !chartTypes || !Number.isFinite(activeChartType)) {
+    return null;
+  }
+
+  const intervals =
+    data.intervals === undefined
+      ? undefined
+      : normalizeStringOptions(data.intervals);
+  if (data.intervals !== undefined && !intervals) {
+    return null;
+  }
+
+  const activeInterval =
+    typeof data.activeInterval === 'string' ? data.activeInterval.trim() : '';
+  const resetLayout = normalizeResetLayout(data.resetLayout);
+  const priceMarketCap = normalizePriceMarketCap(data.priceMarketCap);
+  const priceScale = normalizePriceScale(data.priceScale);
+
+  return {
+    ...(intervals?.length ? { intervals } : {}),
+    ...(activeInterval ? { activeInterval } : {}),
+    ...(typeof data.indicatorsEnabled === 'boolean'
+      ? { indicatorsEnabled: data.indicatorsEnabled }
+      : {}),
+    indicators,
+    ...(typeof data.chartTypesEnabled === 'boolean'
+      ? { chartTypesEnabled: data.chartTypesEnabled }
+      : {}),
+    chartTypes,
+    activeChartType,
+    ...(resetLayout ? { resetLayout } : {}),
+    ...(priceMarketCap ? { priceMarketCap } : {}),
+    ...(priceScale ? { priceScale } : {}),
+    ...(typeof data.timestamp === 'number' && Number.isFinite(data.timestamp)
+      ? { timestamp: data.timestamp }
+      : {}),
+  };
+}
+
+function normalizeTradingViewMessagePayload({
+  data,
+  scope,
+}: ICustomReceiveHandlerData): ICustomReceiveHandlerData['data'] {
+  if (data.scope || !scope) {
+    return data;
+  }
+
+  return {
+    ...data,
+    scope,
+  };
+}
+
 export function useTradingViewMessageHandler({
   tokenAddress = '',
   networkId = '',
@@ -236,21 +569,22 @@ export function useTradingViewMessageHandler({
   tokenSymbol,
   marksTimeRange,
   currentKLineResolution,
+  onCurrentKLineResolutionChange,
   onTouchScroll,
   onIndicatorsDialogOpenChange,
+  onInteractionOverlayOpenChange,
   forceEmptyKLineData,
   emptyKLineDataOnError,
+  kLineDataFallback,
+  primaryKLineDataUnavailable,
+  onPrimaryKLineDataUnavailable,
+  onPriceUpdate,
+  onIntervalConfigChange,
+  onNativeChartControlsConfigChange,
 }: IUseTradingViewMessageHandlerParams) {
   const customReceiveHandler = useCallback(
-    async ({ data }: ICustomReceiveHandlerData) => {
-      // Debug: Log all incoming messages
-      // console.log('🔍 TradingView message received:', {
-      //   scope: data.scope,
-      //   method: data.method,
-      //   origin: data.origin,
-      //   dataKeys: data.data ? Object.keys(data.data) : 'no data',
-      // });
-
+    async (payload: ICustomReceiveHandlerData) => {
+      const data = normalizeTradingViewMessagePayload(payload);
       // Create context for message handlers
       const context: IMessageHandlerContext = {
         tokenAddress,
@@ -261,8 +595,12 @@ export function useTradingViewMessageHandler({
         tokenSymbol,
         marksTimeRange,
         currentKLineResolution,
+        onCurrentKLineResolutionChange,
         forceEmptyKLineData,
         emptyKLineDataOnError,
+        kLineDataFallback,
+        primaryKLineDataUnavailable,
+        onPrimaryKLineDataUnavailable,
       };
 
       // Handle TradingView private API requests
@@ -286,8 +624,6 @@ export function useTradingViewMessageHandler({
         data.scope === '$private' &&
         data.method?.startsWith('tradingview_analytics_')
       ) {
-        console.log('🔍 TradingView analytics message received:', data);
-
         await handleAnalyticsEvent(data.method, { data, context });
       }
 
@@ -299,6 +635,39 @@ export function useTradingViewMessageHandler({
           request: data.data as { symbol?: string; requestId?: string },
           webRef,
         });
+      }
+
+      if (
+        data.scope === '$private' &&
+        data.method === TRADINGVIEW_PRICE_UPDATE
+      ) {
+        const priceUpdateData = data.data as
+          | ITradingViewPriceUpdateData
+          | undefined;
+        if (priceUpdateData) {
+          onPriceUpdate?.(priceUpdateData);
+        }
+      }
+
+      if (
+        data.scope === '$private' &&
+        data.method === TRADINGVIEW_INTERVAL_CONFIG
+      ) {
+        const intervalConfigData = normalizeIntervalConfig(data.data);
+        if (intervalConfigData) {
+          onIntervalConfigChange?.(intervalConfigData);
+        }
+      }
+
+      if (
+        data.scope === '$private' &&
+        data.method === TRADINGVIEW_NATIVE_CHART_CONTROLS_CONFIG
+      ) {
+        const nativeChartControlsConfigData =
+          normalizeNativeChartControlsConfig(data.data);
+        if (nativeChartControlsConfigData) {
+          onNativeChartControlsConfigChange?.(nativeChartControlsConfigData);
+        }
       }
 
       if (data.scope === '$private' && data.method === 'tradingview_getMarks') {
@@ -347,6 +716,20 @@ export function useTradingViewMessageHandler({
           onIndicatorsDialogOpenChange?.(isOpen);
         }
       }
+
+      if (
+        data.scope === '$private' &&
+        data.method === 'tradingview_interactionOverlay'
+      ) {
+        const overlayData = data.data as
+          | ITradingViewInteractionOverlayData
+          | undefined;
+        const isOpen = getInteractionOverlayOpenState(overlayData);
+
+        if (typeof isOpen === 'boolean') {
+          onInteractionOverlayOpenChange?.(isOpen);
+        }
+      }
     },
     [
       tokenAddress,
@@ -357,10 +740,18 @@ export function useTradingViewMessageHandler({
       tokenSymbol,
       marksTimeRange,
       currentKLineResolution,
+      onCurrentKLineResolutionChange,
       onTouchScroll,
       onIndicatorsDialogOpenChange,
+      onInteractionOverlayOpenChange,
       forceEmptyKLineData,
       emptyKLineDataOnError,
+      kLineDataFallback,
+      primaryKLineDataUnavailable,
+      onPrimaryKLineDataUnavailable,
+      onPriceUpdate,
+      onIntervalConfigChange,
+      onNativeChartControlsConfigChange,
     ],
   );
 
