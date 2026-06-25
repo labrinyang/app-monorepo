@@ -2772,6 +2772,55 @@ export interface IBorrowUnsignedTransaction {
   orderId?: string;
 }
 
+export interface IBorrowEModeAsset {
+  reserveAddress: string;
+  token: IToken;
+  boostedLTV: boolean;
+  borrowable: boolean;
+}
+
+export interface IBorrowEModeCategory {
+  eModeId: number;
+  label: string;
+  ltv: string; // boosted LTV, e.g. "93"
+  disabled: boolean;
+  assets: IBorrowEModeAsset[];
+}
+
+export interface IBorrowEModeStatus {
+  eModeId: number; // 0 = normal mode
+  originalLtv: string;
+  categories: IBorrowEModeCategory[];
+}
+
+export interface IBorrowEModeBlockerAsset {
+  reserveAddress: string;
+  token: IToken;
+  supplied?: { title: IEarnText; description?: IEarnText; number: string };
+  borrowed?: { title: IEarnText; description?: IEarnText; number: string };
+}
+
+// collateral/debt carry title+description; maxLtv/healthFactor carry title only.
+// Reuse the existing confirmation row shapes instead of new parallel types.
+export type IBorrowEModeConfirmRow = NonNullable<
+  IBorrowTransactionConfirmation['mySupply']
+>;
+export type IBorrowEModeHfRow = NonNullable<
+  IBorrowTransactionConfirmation['healthFactor']
+>;
+
+export interface IBorrowEModeSwitchCheck {
+  canSwitch: boolean;
+  reasons: string[];
+  disableCollateralAssets: IBorrowEModeBlockerAsset[];
+  repayAssets: IBorrowEModeBlockerAsset[];
+  additionalRepayAssets: IBorrowEModeBlockerAsset[];
+  collateral: IBorrowEModeConfirmRow;
+  debt: IBorrowEModeConfirmRow;
+  maxLtv: IBorrowEModeHfRow;
+  healthFactor: IBorrowEModeHfRow;
+}
+
 export type IBorrowManagePage = IEarnManagePageResponse;
 
 export interface IRepayWithCollateralQuote {
