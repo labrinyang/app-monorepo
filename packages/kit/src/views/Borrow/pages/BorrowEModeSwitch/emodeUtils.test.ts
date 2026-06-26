@@ -3,7 +3,12 @@ import type {
   IBorrowEModeSwitchCheck,
 } from '@onekeyhq/shared/types/staking';
 
-import { buildEModeRows, buildNeedActionItems } from './emodeUtils';
+import {
+  type IEModeRow,
+  buildEModeRows,
+  buildNeedActionItems,
+  getEModeRowAction,
+} from './emodeUtils';
 
 const status = {
   eModeId: 1,
@@ -100,5 +105,58 @@ describe('buildNeedActionItems', () => {
     });
     expect(items[0].amount).toEqual({ text: 'Borrowed USDC' });
     expect(items[2].amount).toEqual({ text: 'Supplied ETH' });
+  });
+});
+
+describe('getEModeRowAction', () => {
+  const base: IEModeRow = {
+    eModeId: 5,
+    label: 'X',
+    disabled: false,
+    selected: false,
+    isOff: false,
+  };
+  it('selected row → current', () => {
+    expect(getEModeRowAction({ ...base, selected: true })).toBe('current');
+  });
+  it('selected wins over disabled', () => {
+    expect(getEModeRowAction({ ...base, selected: true, disabled: true })).toBe(
+      'current',
+    );
+  });
+  it('disabled → needAction', () => {
+    expect(getEModeRowAction({ ...base, disabled: true })).toBe('needAction');
+  });
+  it('canSwitch:false → needAction', () => {
+    expect(getEModeRowAction({ ...base, canSwitch: false })).toBe('needAction');
+  });
+  it('canSwitch:true → switch', () => {
+    expect(getEModeRowAction({ ...base, canSwitch: true })).toBe('switch');
+  });
+  it('canSwitch undefined (backend not shipped) → switch', () => {
+    expect(getEModeRowAction(base)).toBe('switch');
+  });
+});
+
+describe('buildEModeRows canSwitch passthrough', () => {
+  it('carries canSwitch from category to row', () => {
+    const rows = buildEModeRows(
+      {
+        eModeId: 0,
+        originalLtv: '80',
+        categories: [
+          {
+            eModeId: 7,
+            label: 'Z',
+            ltv: '70',
+            disabled: false,
+            canSwitch: false,
+            assets: [],
+          },
+        ],
+      },
+      'Off',
+    );
+    expect(rows.find((r) => r.eModeId === 7)?.canSwitch).toBe(false);
   });
 });

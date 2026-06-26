@@ -10,6 +10,7 @@ export interface IEModeRow {
   label: string;
   ltv?: string;
   disabled: boolean;
+  canSwitch?: boolean;
   selected: boolean;
   isOff: boolean;
 }
@@ -34,6 +35,7 @@ export function buildEModeRows(
     label: c.label,
     ltv: c.ltv,
     disabled: c.disabled,
+    canSwitch: c.canSwitch,
     selected: currentId === c.eModeId,
     isOff: false,
   }));
@@ -78,4 +80,21 @@ export function buildNeedActionItems(
     ...(check.additionalRepayAssets ?? []).map(toRepay),
     ...(check.disableCollateralAssets ?? []).map(toRemoveCollateral),
   ];
+}
+
+export type IEModeRowAction = 'current' | 'switch' | 'needAction';
+
+// Drives the per-row trailing control on the e-mode switch list.
+// `canSwitch` is optional: when the backend has not populated it the field
+// is undefined and a non-disabled row falls back to 'switch' (optimistic —
+// the on-tap switch-check still routes to Need Action if it turns out
+// blocked). `disabled:true` is always a guided-unwind 'needAction'.
+export function getEModeRowAction(row: IEModeRow): IEModeRowAction {
+  if (row.selected) {
+    return 'current';
+  }
+  if (row.disabled || row.canSwitch === false) {
+    return 'needAction';
+  }
+  return 'switch';
 }

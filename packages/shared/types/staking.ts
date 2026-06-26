@@ -2784,6 +2784,10 @@ export interface IBorrowEModeCategory {
   label: string;
   ltv: string; // boosted LTV, e.g. "93"
   disabled: boolean;
+  // Optional: backend may report whether each category is switchable. Absent →
+  // the client treats a non-disabled row as optimistically switchable and
+  // resolves the real state via switch-check on tap.
+  canSwitch?: boolean;
   assets: IBorrowEModeAsset[];
 }
 
