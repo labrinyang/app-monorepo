@@ -1,5 +1,6 @@
 import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
 import { usePromiseResult } from '@onekeyhq/kit/src/hooks/usePromiseResult';
+import { EBorrowProviderEnum } from '@onekeyhq/shared/types/staking';
 
 interface IUseBorrowEModeStatusParams {
   networkId?: string;
@@ -22,7 +23,16 @@ export const useBorrowEModeStatus = ({
     isLoading,
   } = usePromiseResult(
     async () => {
-      if (!networkId || !provider || !marketAddress || !accountId || !enabled) {
+      // e-mode is an Aave-only feature; never query it for other providers
+      // (e.g. Kamino), which the backend rejects with "not implemented".
+      if (
+        !networkId ||
+        !provider ||
+        !marketAddress ||
+        !accountId ||
+        !enabled ||
+        provider.toLowerCase() !== EBorrowProviderEnum.Aave
+      ) {
         return null;
       }
       return backgroundApiProxy.serviceStaking.getBorrowEModeStatus({
