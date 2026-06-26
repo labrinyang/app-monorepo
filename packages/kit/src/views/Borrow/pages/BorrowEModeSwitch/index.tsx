@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef } from 'react';
 
 import { useIntl } from 'react-intl';
 
 import {
-  Icon,
+  Button,
   Page,
   SizableText,
   Skeleton,
@@ -26,7 +26,7 @@ import { EarnProviderMirror } from '../../../Earn/EarnProviderMirror';
 import { useEarnAccount } from '../../../Staking/hooks/useEarnAccount';
 
 import { EModeBeforeAfter } from './EModeBeforeAfter';
-import { buildEModeRows } from './emodeUtils';
+import { buildEModeRows, getEModeRowAction } from './emodeUtils';
 import { useEModeSwitch } from './useEModeSwitch';
 
 function BorrowEModeSwitchView() {
@@ -96,31 +96,37 @@ function BorrowEModeSwitchView() {
     check?.maxLtv?.current?.title?.text ??
     (selectedRow?.ltv ? `${selectedRow.ltv}%` : '—');
 
-  const openNeedAction = useCallback(() => {
-    if (targetEModeId === null) {
-      return;
-    }
-    navigation.push(EModalStakingRoutes.BorrowEModeNeedAction, {
+  const openNeedAction = useCallback(
+    (eModeId: number, label: string) => {
+      navigation.push(EModalStakingRoutes.BorrowEModeNeedAction, {
+        accountId,
+        indexedAccountId,
+        networkId,
+        provider,
+        marketAddress,
+        targetEModeId: eModeId,
+        categoryLabel: label,
+      });
+    },
+    [
+      navigation,
       accountId,
       indexedAccountId,
       networkId,
       provider,
       marketAddress,
-      targetEModeId,
-      categoryLabel: targetRow?.label ?? '',
-    });
-  }, [
-    targetEModeId,
-    navigation,
-    accountId,
-    indexedAccountId,
-    networkId,
-    provider,
-    marketAddress,
-    targetRow,
-  ]);
+    ],
+  );
 
   const blocked = !!check && !check.canSwitch;
+
+  const onFooterConfirm = useCallback(() => {
+    if (blocked && targetEModeId !== null) {
+      openNeedAction(targetEModeId, targetRow?.label ?? '');
+      return;
+    }
+    void confirmSwitch();
+  }, [blocked, targetEModeId, openNeedAction, targetRow, confirmSwitch]);
 
   return (
     <Page scrollEnabled>
@@ -152,37 +158,69 @@ function BorrowEModeSwitchView() {
                 id: ETranslations.defi_emode_select_category,
               })}
             </SizableText>
-            {rows.map((row) => (
-              <XStack
-                key={row.eModeId}
-                testID={`borrow-e-mode-category-${row.eModeId}`}
-                ai="center"
-                jc="space-between"
-                p="$3"
-                borderRadius="$3"
-                borderWidth={1}
-                borderColor={row.selected ? '$borderActive' : '$borderSubdued'}
-                opacity={row.disabled ? 0.5 : 1}
-                animation="quick"
-                onPress={row.disabled ? undefined : () => runCheck(row.eModeId)}
-              >
-                <YStack>
-                  <SizableText size="$bodyLgMedium">{row.label}</SizableText>
-                  {row.ltv ? (
-                    <SizableText size="$bodySm" color="$textSubdued">
-                      {intl.formatMessage(
-                        { id: ETranslations.defi_emode_max_ltv },
-                        { ltv: row.ltv },
-                      )}
-                    </SizableText>
-                  ) : null}
-                </YStack>
-                {targetEModeId === row.eModeId ||
-                (targetEModeId === null && row.selected) ? (
-                  <Icon name="CheckRadioSolid" size="$5" color="$iconActive" />
-                ) : null}
-              </XStack>
-            ))}
+            {rows.map((row) => {
+              const action = getEModeRowAction(row);
+              const isTarget = targetEModeId === row.eModeId;
+              let control: ReactNode;
+              if (action === 'current') {
+                control = (
+                  <SizableText size="$bodyMdMedium" color="$textSubdued">
+                    {intl.formatMessage({ id: ETranslations.global_current })}
+                  </SizableText>
+                );
+              } else if (action === 'needAction') {
+                control = (
+                  <Button
+                    size="small"
+                    variant="secondary"
+                    testID={`borrow-e-mode-need-action-btn-${row.eModeId}`}
+                    onPress={() => openNeedAction(row.eModeId, row.label)}
+                  >
+                    {intl.formatMessage({
+                      id: ETranslations.defi_emode_need_action,
+                    })}
+                  </Button>
+                );
+              } else {
+                control = (
+                  <Button
+                    size="small"
+                    variant="primary"
+                    testID={`borrow-e-mode-switch-${row.eModeId}`}
+                    onPress={() => runCheck(row.eModeId)}
+                  >
+                    {intl.formatMessage({ id: ETranslations.global_switch })}
+                  </Button>
+                );
+              }
+              return (
+                <XStack
+                  key={row.eModeId}
+                  testID={`borrow-e-mode-category-${row.eModeId}`}
+                  ai="center"
+                  jc="space-between"
+                  gap="$3"
+                  p="$3"
+                  borderRadius="$3"
+                  borderWidth={1}
+                  borderColor={isTarget ? '$borderActive' : '$borderSubdued'}
+                  animation="quick"
+                >
+                  <YStack flex={1}>
+                    <SizableText size="$bodyLgMedium">{row.label}</SizableText>
+                    {row.ltv ? (
+                      <SizableText size="$bodySm" color="$textSubdued">
+                        {intl.formatMessage(
+                          { id: ETranslations.defi_emode_max_ltv },
+                          { ltv: row.ltv },
+                        )}
+                      </SizableText>
+                    ) : null}
+                  </YStack>
+                  {control}
+                </XStack>
+              );
+            })}
 
             {isChecking ? (
               <Skeleton h="$24" w="100%" borderRadius="$3" />
@@ -198,7 +236,7 @@ function BorrowEModeSwitchView() {
             : ETranslations.defi_emode_confirm,
         })}
         confirmButtonProps={{ disabled: isChecking || !check }}
-        onConfirm={blocked ? openNeedAction : confirmSwitch}
+        onConfirm={onFooterConfirm}
       />
     </Page>
   );
