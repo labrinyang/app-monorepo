@@ -168,6 +168,21 @@ export const BorrowNavigation = {
     });
   },
 
+  pushToBorrowEModeSwitch(
+    navigation: IAppNavigation,
+    params: {
+      accountId: string;
+      networkId: string;
+      provider: string;
+      marketAddress: string;
+    },
+  ) {
+    navigation.pushModal(EModalRoutes.StakingModal, {
+      screen: EModalStakingRoutes.BorrowEModeSwitch,
+      params,
+    });
+  },
+
   generateBorrowShareLink({
     networkId,
     symbol,
