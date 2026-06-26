@@ -22,6 +22,7 @@ export enum EModalStakingRoutes {
   BorrowTokenSelect = 'BorrowTokenSelect',
   BorrowReserveDetails = 'BorrowReserveDetails',
   BorrowEModeSwitch = 'BorrowEModeSwitch',
+  BorrowEModeNeedAction = 'BorrowEModeNeedAction',
   Claim = 'Claim',
   ProtocolDetails = 'ProtocolDetails',
   ProtocolDetailsV2 = 'ProtocolDetailsV2',
@@ -92,6 +93,12 @@ export type IModalStakingParamList = {
   [EModalStakingRoutes.BorrowEModeSwitch]: IBaseRouteParams & {
     provider: string;
     marketAddress: string;
+  };
+  [EModalStakingRoutes.BorrowEModeNeedAction]: IBaseRouteParams & {
+    provider: string;
+    marketAddress: string;
+    targetEModeId: number;
+    categoryLabel: string;
   };
   [EModalStakingRoutes.BorrowTokenSelect]: IBaseRouteParams & {
     provider: string;
