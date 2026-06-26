@@ -447,12 +447,17 @@ export const Overview = ({
               </XStack>
             </YStack>
             {hasEMode ? (
-              <YStack gap="$1" flex={1} onPress={openEModeSwitch}>
-                <SizableText size="$bodyMdMedium" color="$textSubdued">
+              <YStack
+                gap="$1"
+                flex={1}
+                onPress={openEModeSwitch}
+                testID="borrow-overview-emode-cell"
+              >
+                <SizableText size="$bodyMd" color="$textSubdued">
                   {intl.formatMessage({ id: ETranslations.defi_emode_label })}
                 </SizableText>
                 <XStack ai="center" gap="$1">
-                  <SizableText size="$bodyLgMedium">
+                  <SizableText size="$headingLg">
                     {eModeStatus?.eModeId === 0 || !currentEMode
                       ? intl.formatMessage({ id: ETranslations.defi_emode_off })
                       : currentEMode.label}

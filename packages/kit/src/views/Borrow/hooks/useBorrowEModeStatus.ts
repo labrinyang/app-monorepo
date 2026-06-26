@@ -33,7 +33,13 @@ export const useBorrowEModeStatus = ({
       });
     },
     [networkId, provider, marketAddress, accountId, enabled],
-    { initResult: null, watchLoading: true, alwaysSetState: true },
+    {
+      initResult: null,
+      watchLoading: true,
+      alwaysSetState: true,
+      checkIsFocused: true,
+      revalidateOnFocus: true,
+    },
   );
 
   return { eModeStatus, isLoading, refresh: run };

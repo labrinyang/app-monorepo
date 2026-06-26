@@ -1,5 +1,3 @@
-import { useCallback } from 'react';
-
 import { useIntl } from 'react-intl';
 
 import {
@@ -77,11 +75,6 @@ function BorrowEModeSwitchView() {
     },
   });
 
-  const onGoRepay = useCallback(() => {
-    // Repay blockers route to the existing repay flow; user returns and re-checks.
-    navigation.pop();
-  }, [navigation]);
-
   const rows = buildEModeRows(
     eModeStatus,
     intl.formatMessage({ id: ETranslations.defi_emode_off }),
@@ -143,7 +136,6 @@ function BorrowEModeSwitchView() {
               <EModeBeforeAfter
                 check={check}
                 onDisableCollateral={disableCollateral}
-                onGoRepay={onGoRepay}
               />
             ) : null}
           </>

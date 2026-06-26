@@ -2816,7 +2816,6 @@ class ServiceStaking extends ServiceBase {
     provider: string;
     marketAddress: string;
     accountId: string;
-    reserveAddress?: string;
   }) {
     const { accountId, ...rest } = params;
     const accountAddress =

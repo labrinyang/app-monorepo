@@ -65,11 +65,9 @@ function HfRow({ title, data }: { title: string; data: IBorrowEModeHfRow }) {
 export function EModeBeforeAfter({
   check,
   onDisableCollateral,
-  onGoRepay,
 }: {
   check: IBorrowEModeSwitchCheck;
   onDisableCollateral: (reserveAddress: string) => void;
-  onGoRepay: (reserveAddress: string) => void;
 }) {
   const intl = useIntl();
   return (
@@ -114,18 +112,6 @@ export function EModeBeforeAfter({
             { id: ETranslations.defi_emode_disable_collateral },
             { symbol: a.token.symbol },
           )}
-        </Button>
-      ))}
-
-      {[...check.repayAssets, ...check.additionalRepayAssets].map((a) => (
-        <Button
-          key={a.reserveAddress}
-          testID={`borrow-e-mode-repay-${a.reserveAddress}`}
-          variant="secondary"
-          onPress={() => onGoRepay(a.reserveAddress)}
-        >
-          {intl.formatMessage({ id: ETranslations.defi_emode_go_repay })}{' '}
-          {a.token.symbol}
         </Button>
       ))}
     </YStack>
