@@ -665,6 +665,7 @@ export enum ETranslations {
   defi_emode_need_action_subtitle = 'defi.emode_need_action_subtitle',
   defi_emode_repay_symbol = 'defi.emode_repay_symbol',
   defi_emode_manage_positions = 'defi.emode_manage_positions',
+  defi_emode_need_action = 'defi.emode_need_action',
   defi_collateral = 'defi.collateral',
   defi_debt = 'defi.debt',
   defi_hide_low_value_positions = 'defi.hide_low_value_positions',

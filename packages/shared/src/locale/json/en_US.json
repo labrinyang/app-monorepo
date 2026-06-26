@@ -660,6 +660,7 @@
   "defi.emode_need_action_subtitle": "Clear these to switch to {category}",
   "defi.emode_repay_symbol": "Repay {symbol}",
   "defi.emode_manage_positions": "Manage positions",
+  "defi.emode_need_action": "Need action",
   "defi.collateral": "Collateral",
   "defi.debt": "Debt",
   "defi.hide_low_value_positions": "Hide low-value positions",
