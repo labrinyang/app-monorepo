@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useRef } from 'react';
+
 import { useIntl } from 'react-intl';
 
 import {
@@ -11,13 +13,12 @@ import {
 import { AccountSelectorProviderMirror } from '@onekeyhq/kit/src/components/AccountSelector';
 import useAppNavigation from '@onekeyhq/kit/src/hooks/useAppNavigation';
 import { useAppRoute } from '@onekeyhq/kit/src/hooks/useAppRoute';
+import { useRouteIsFocused } from '@onekeyhq/kit/src/hooks/useRouteIsFocused';
 import { useBorrowEModeStatus } from '@onekeyhq/kit/src/views/Borrow/hooks/useBorrowEModeStatus';
 import { EJotaiContextStoreNames } from '@onekeyhq/kit-bg/src/states/jotai/atoms';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
-import type {
-  EModalStakingRoutes,
-  IModalStakingParamList,
-} from '@onekeyhq/shared/src/routes';
+import { EModalStakingRoutes } from '@onekeyhq/shared/src/routes';
+import type { IModalStakingParamList } from '@onekeyhq/shared/src/routes';
 import { EAccountSelectorSceneName } from '@onekeyhq/shared/types';
 
 import { DiscoveryBrowserProviderMirror } from '../../../Discovery/components/DiscoveryBrowserProviderMirror';
@@ -42,6 +43,7 @@ function BorrowEModeSwitchView() {
   } = route.params;
   const intl = useIntl();
   const navigation = useAppNavigation();
+  const isFocused = useRouteIsFocused();
   const { earnAccount } = useEarnAccount({
     networkId,
     accountId: routeAccountId,
@@ -57,28 +59,68 @@ function BorrowEModeSwitchView() {
     enabled: !!accountId,
   });
 
-  const {
-    targetEModeId,
-    check,
-    isChecking,
-    runCheck,
-    confirmSwitch,
-    disableCollateral,
-  } = useEModeSwitch({
-    networkId,
-    accountId,
-    provider,
-    marketAddress,
-    onSwitched: () => {
-      void refresh();
-      navigation.pop();
-    },
-  });
+  const { targetEModeId, check, isChecking, runCheck, confirmSwitch } =
+    useEModeSwitch({
+      networkId,
+      accountId,
+      provider,
+      marketAddress,
+      onSwitched: () => {
+        void refresh();
+        navigation.pop();
+      },
+    });
+
+  // Re-check when B regains focus (e.g. after the Need Action screen pops),
+  // so a resolved blocker flips canSwitch and enables Confirm. Read the
+  // target through a ref so this fires on focus transitions only, not on
+  // every selection (selection already calls runCheck directly).
+  const targetRef = useRef(targetEModeId);
+  targetRef.current = targetEModeId;
+  useEffect(() => {
+    if (isFocused && targetRef.current !== null) {
+      void runCheck(targetRef.current);
+    }
+  }, [isFocused, runCheck]);
 
   const rows = buildEModeRows(
     eModeStatus,
     intl.formatMessage({ id: ETranslations.defi_emode_off }),
   );
+  const selectedRow = rows.find((r) => r.selected);
+  const targetRow = rows.find((r) => r.eModeId === targetEModeId);
+
+  // Hero = current Max LTV (stable anchor). Prefer the precise server value
+  // from a check; fall back to the current category row's coarse ltv.
+  const heroLtv =
+    check?.maxLtv?.current?.title?.text ??
+    (selectedRow?.ltv ? `${selectedRow.ltv}%` : '—');
+
+  const openNeedAction = useCallback(() => {
+    if (targetEModeId === null) {
+      return;
+    }
+    navigation.push(EModalStakingRoutes.BorrowEModeNeedAction, {
+      accountId,
+      indexedAccountId,
+      networkId,
+      provider,
+      marketAddress,
+      targetEModeId,
+      categoryLabel: targetRow?.label ?? '',
+    });
+  }, [
+    targetEModeId,
+    navigation,
+    accountId,
+    indexedAccountId,
+    networkId,
+    provider,
+    marketAddress,
+    targetRow,
+  ]);
+
+  const blocked = !!check && !check.canSwitch;
 
   return (
     <Page scrollEnabled>
@@ -93,6 +135,18 @@ function BorrowEModeSwitchView() {
           </YStack>
         ) : (
           <>
+            <YStack gap="$1" pt="$2">
+              <SizableText size="$bodyMd" color="$textSubdued">
+                {intl.formatMessage({ id: ETranslations.defi_max_ltv })}
+              </SizableText>
+              <SizableText size="$heading5xl">{heroLtv}</SizableText>
+              {selectedRow ? (
+                <SizableText size="$bodyMd" color="$textSubdued">
+                  {selectedRow.label}
+                </SizableText>
+              ) : null}
+            </YStack>
+
             <SizableText size="$headingSm">
               {intl.formatMessage({
                 id: ETranslations.defi_emode_select_category,
@@ -109,6 +163,7 @@ function BorrowEModeSwitchView() {
                 borderWidth={1}
                 borderColor={row.selected ? '$borderActive' : '$borderSubdued'}
                 opacity={row.disabled ? 0.5 : 1}
+                animation="quick"
                 onPress={row.disabled ? undefined : () => runCheck(row.eModeId)}
               >
                 <YStack>
@@ -132,21 +187,18 @@ function BorrowEModeSwitchView() {
             {isChecking ? (
               <Skeleton h="$24" w="100%" borderRadius="$3" />
             ) : null}
-            {check && !isChecking ? (
-              <EModeBeforeAfter
-                check={check}
-                onDisableCollateral={disableCollateral}
-              />
-            ) : null}
+            {check && !isChecking ? <EModeBeforeAfter check={check} /> : null}
           </>
         )}
       </Page.Body>
       <Page.Footer
         onConfirmText={intl.formatMessage({
-          id: ETranslations.defi_emode_confirm,
+          id: blocked
+            ? ETranslations.defi_emode_resolve_to_switch
+            : ETranslations.defi_emode_confirm,
         })}
-        confirmButtonProps={{ disabled: !check?.canSwitch || isChecking }}
-        onConfirm={confirmSwitch}
+        confirmButtonProps={{ disabled: isChecking || !check }}
+        onConfirm={blocked ? openNeedAction : confirmSwitch}
       />
     </Page>
   );

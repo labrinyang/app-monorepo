@@ -1,6 +1,6 @@
 import { useIntl } from 'react-intl';
 
-import { Button, Icon, SizableText, YStack } from '@onekeyhq/components';
+import { Icon, YStack } from '@onekeyhq/components';
 import { BorrowInfoItem } from '@onekeyhq/kit/src/views/Borrow/components/BorrowInfoItem';
 import { EarnText } from '@onekeyhq/kit/src/views/Staking/components/ProtocolDetails/EarnText';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
@@ -62,12 +62,12 @@ function HfRow({ title, data }: { title: string; data: IBorrowEModeHfRow }) {
   );
 }
 
+// Impact card: Health factor / Collateral / Debt only. Max LTV is the hero
+// in screen B and is never repeated here.
 export function EModeBeforeAfter({
   check,
-  onDisableCollateral,
 }: {
   check: IBorrowEModeSwitchCheck;
-  onDisableCollateral: (reserveAddress: string) => void;
 }) {
   const intl = useIntl();
   return (
@@ -77,6 +77,8 @@ export function EModeBeforeAfter({
       borderRadius="$3"
       borderWidth={1}
       borderColor="$borderSubdued"
+      animation="quick"
+      enterStyle={{ opacity: 0, y: 8 }}
     >
       <ConfirmRow
         title={intl.formatMessage({ id: ETranslations.defi_collateral })}
@@ -87,33 +89,9 @@ export function EModeBeforeAfter({
         data={check.debt}
       />
       <HfRow
-        title={intl.formatMessage({ id: ETranslations.defi_max_ltv })}
-        data={check.maxLtv}
-      />
-      <HfRow
         title={intl.formatMessage({ id: ETranslations.defi_health_factor })}
         data={check.healthFactor}
       />
-
-      {check.reasons.map((r) => (
-        <SizableText key={r} size="$bodySm" color="$textCritical">
-          {r}
-        </SizableText>
-      ))}
-
-      {check.disableCollateralAssets.map((a) => (
-        <Button
-          key={a.reserveAddress}
-          testID={`borrow-e-mode-disable-collateral-${a.reserveAddress}`}
-          variant="secondary"
-          onPress={() => onDisableCollateral(a.reserveAddress)}
-        >
-          {intl.formatMessage(
-            { id: ETranslations.defi_emode_disable_collateral },
-            { symbol: a.token.symbol },
-          )}
-        </Button>
-      ))}
     </YStack>
   );
 }
