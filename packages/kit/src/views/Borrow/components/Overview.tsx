@@ -41,6 +41,7 @@ import {
 } from '../../Staking/utils/utils';
 import { useBorrowContext } from '../BorrowProvider';
 import { BorrowNavigation } from '../borrowUtils';
+import { useBorrowEModeStatus } from '../hooks/useBorrowEModeStatus';
 import { useBorrowHealthFactor } from '../hooks/useBorrowHealthFactor';
 import { useBorrowRewards } from '../hooks/useBorrowRewards';
 import { useUniversalBorrowClaim } from '../hooks/useUniversalBorrowHooks';
@@ -171,6 +172,30 @@ export const Overview = ({
       isActive && !!(networkId && provider && marketAddress && earnAccountId),
   });
   const healthFactorAlerts = healthFactorData?.alerts;
+
+  const { eModeStatus } = useBorrowEModeStatus({
+    networkId,
+    provider,
+    marketAddress,
+    accountId: earnAccountId,
+    enabled:
+      isActive && !!(networkId && provider && marketAddress && earnAccountId),
+  });
+  const currentEMode = eModeStatus?.categories?.find(
+    (c) => c.eModeId === eModeStatus.eModeId,
+  );
+  const hasEMode = (eModeStatus?.categories?.length ?? 0) > 0;
+  const openEModeSwitch = useCallback(() => {
+    if (!networkId || !provider || !marketAddress || !earnAccountId) {
+      return;
+    }
+    BorrowNavigation.pushToBorrowEModeSwitch(navigation, {
+      accountId: earnAccountId,
+      networkId,
+      provider,
+      marketAddress,
+    });
+  }, [navigation, networkId, provider, marketAddress, earnAccountId]);
 
   useEffect(() => {
     onHealthFactorAlertsChange?.(healthFactorAlerts);
@@ -421,6 +446,25 @@ export const Overview = ({
                 )}
               </XStack>
             </YStack>
+            {hasEMode ? (
+              <YStack gap="$1" flex={1} onPress={openEModeSwitch}>
+                <SizableText size="$bodyMdMedium" color="$textSubdued">
+                  {intl.formatMessage({ id: ETranslations.defi_emode_label })}
+                </SizableText>
+                <XStack ai="center" gap="$1">
+                  <SizableText size="$bodyLgMedium">
+                    {eModeStatus?.eModeId === 0 || !currentEMode
+                      ? intl.formatMessage({ id: ETranslations.defi_emode_off })
+                      : currentEMode.label}
+                  </SizableText>
+                  <Icon
+                    name="ChevronRightSmallOutline"
+                    size="$4"
+                    color="$iconSubdued"
+                  />
+                </XStack>
+              </YStack>
+            ) : null}
             <YStack gap="$1" flex={1}>
               <SizableText size="$bodyMd" color="$textSubdued">
                 {labels.platformBonus}
@@ -557,6 +601,29 @@ export const Overview = ({
           ) : undefined
         }
       />
+      {hasEMode ? (
+        <OverviewItem
+          needDivider
+          title={{
+            text: intl.formatMessage({ id: ETranslations.defi_emode_label }),
+          }}
+          text={{
+            text:
+              eModeStatus?.eModeId === 0 || !currentEMode
+                ? intl.formatMessage({ id: ETranslations.defi_emode_off })
+                : currentEMode.label,
+          }}
+          action={
+            <IconButton
+              testID="borrow-overview-emode-btn"
+              icon="ChevronRightSmallOutline"
+              variant="tertiary"
+              size="small"
+              onPress={openEModeSwitch}
+            />
+          }
+        />
+      ) : null}
       <OverviewItem
         needDivider
         title={
