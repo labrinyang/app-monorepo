@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 
 import { useIntl } from 'react-intl';
 
@@ -8,6 +8,7 @@ import {
   Page,
   SizableText,
   Skeleton,
+  Spinner,
   XStack,
   YStack,
 } from '@onekeyhq/components';
@@ -22,6 +23,7 @@ import {
   buildNeedActionItems,
 } from '@onekeyhq/kit/src/views/Borrow/pages/BorrowEModeSwitch/emodeUtils';
 import { useEModeSwitch } from '@onekeyhq/kit/src/views/Borrow/pages/BorrowEModeSwitch/useEModeSwitch';
+import { useStakingPendingTxsByInfo } from '@onekeyhq/kit/src/views/Earn/hooks/useStakingPendingTxs';
 import { EarnText } from '@onekeyhq/kit/src/views/Staking/components/ProtocolDetails/EarnText';
 import { EJotaiContextStoreNames } from '@onekeyhq/kit-bg/src/states/jotai/atoms';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
@@ -30,7 +32,10 @@ import type {
   IModalStakingParamList,
 } from '@onekeyhq/shared/src/routes';
 import { EAccountSelectorSceneName } from '@onekeyhq/shared/types';
-import { EManagePositionType } from '@onekeyhq/shared/types/staking';
+import {
+  EEarnLabels,
+  EManagePositionType,
+} from '@onekeyhq/shared/types/staking';
 
 import { DiscoveryBrowserProviderMirror } from '../../../Discovery/components/DiscoveryBrowserProviderMirror';
 import { EarnProviderMirror } from '../../../Earn/EarnProviderMirror';
@@ -150,13 +155,36 @@ function BorrowEModeNeedActionView() {
   });
   const accountId = earnAccount?.account?.id || routeAccountId || '';
 
-  const { check, isChecking, runCheck, disableCollateral } = useEModeSwitch({
-    networkId,
-    accountId,
-    provider,
-    marketAddress,
-    onSwitched: () => {},
+  const { check, isChecking, runCheck, confirmSwitch, disableCollateral } =
+    useEModeSwitch({
+      networkId,
+      accountId,
+      provider,
+      marketAddress,
+      // After the switch lands, close the whole e-mode modal stack; the
+      // Overview re-reads e-mode status on focus.
+      onSwitched: () => navigation.popStack(),
+    });
+
+  // Track this account/network's borrow txs (Repay / Remove / Withdraw). When
+  // they confirm on-chain, force a fresh switch-check after a short backend
+  // sync delay so a resolved blocker drops off and canSwitch can flip true.
+  const pendingTagMatcher = useCallback(
+    (tag: string) =>
+      tag === EEarnLabels.Borrow ||
+      tag.startsWith(`borrow:${provider.toLowerCase()}:`),
+    [provider],
+  );
+  const { filteredTxs: pendingTxs = [] } = useStakingPendingTxsByInfo({
+    networkIds: [networkId],
+    tagMatcher: pendingTagMatcher,
+    onRefresh: () => {
+      void runCheck(targetEModeId);
+    },
+    onRefreshDelayMs: 3000,
   });
+  const isPending = pendingTxs.length > 0;
+  const canSwitch = !!check?.canSwitch;
 
   // Re-check on every focus: initial mount AND each time a routed Repay /
   // Withdraw modal closes and returns here, so resolved blockers drop off.
@@ -183,6 +211,15 @@ function BorrowEModeNeedActionView() {
             { category: categoryLabel },
           )}
         </SizableText>
+
+        {isPending ? (
+          <XStack ai="center" gap="$2">
+            <Spinner size="small" />
+            <SizableText size="$bodyMd" color="$textSubdued">
+              {intl.formatMessage({ id: ETranslations.global_processing })}
+            </SizableText>
+          </XStack>
+        ) : null}
 
         {isChecking && !check ? (
           <YStack gap="$3">
@@ -221,21 +258,34 @@ function BorrowEModeNeedActionView() {
           </YStack>
         ) : null}
 
-        {!isChecking && check && items.length === 0 ? (
-          <Button
-            variant="secondary"
-            testID="borrow-e-mode-need-action-manage"
-            onPress={() => navigation.popStack()}
-          >
+        {!isChecking &&
+        !isPending &&
+        check &&
+        items.length === 0 &&
+        !canSwitch ? (
+          <SizableText size="$bodyMd" color="$textSubdued">
             {intl.formatMessage({
-              id: ETranslations.defi_emode_manage_positions,
+              id: ETranslations.defi_emode_unavailable_desc,
             })}
-          </Button>
+          </SizableText>
         ) : null}
       </Page.Body>
       <Page.Footer
-        onConfirmText={intl.formatMessage({ id: ETranslations.global_done })}
-        onConfirm={() => navigation.pop()}
+        onConfirmText={intl.formatMessage({
+          id: canSwitch
+            ? ETranslations.global_switch
+            : ETranslations.global_done,
+        })}
+        confirmButtonProps={{
+          disabled: canSwitch && (isChecking || isPending),
+        }}
+        onConfirm={() => {
+          if (canSwitch) {
+            void confirmSwitch();
+            return;
+          }
+          navigation.pop();
+        }}
       />
     </Page>
   );

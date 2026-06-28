@@ -662,6 +662,7 @@
   "defi.emode_manage_positions": "Manage positions",
   "defi.emode_need_action": "Need action",
   "defi.emode_unavailable": "Unavailable",
+  "defi.emode_unavailable_desc": "This category isn't available for your current positions.",
   "defi.collateral": "Collateral",
   "defi.debt": "Debt",
   "defi.hide_low_value_positions": "Hide low-value positions",
