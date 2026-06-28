@@ -191,6 +191,14 @@ describe('summarizeSwitchCheck', () => {
     });
   });
 
+  it('zero code with null data => errored', () => {
+    expect(summarizeSwitchCheck({ code: 0, data: null })).toEqual({
+      isChecking: false,
+      errored: true,
+      itemCount: 0,
+    });
+  });
+
   it('ok response => canSwitch + blocker count', () => {
     expect(summarizeSwitchCheck({ code: 0, data: okData })).toEqual({
       isChecking: false,

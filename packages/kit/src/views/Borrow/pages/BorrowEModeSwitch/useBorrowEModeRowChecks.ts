@@ -72,6 +72,7 @@ export function useBorrowEModeRowChecks({
           provider,
           marketAddress,
           targetEModeId,
+          autoHandleError: false,
         })
         .then((resp) => {
           if (genRef.current !== gen) {

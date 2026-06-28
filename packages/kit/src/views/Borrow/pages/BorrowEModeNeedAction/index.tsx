@@ -205,12 +205,14 @@ function BorrowEModeNeedActionView() {
         })}
       />
       <Page.Body px="$5" gap="$4">
-        <SizableText size="$bodyMd" color="$textSubdued">
-          {intl.formatMessage(
-            { id: ETranslations.defi_emode_need_action_subtitle },
-            { category: categoryLabel },
-          )}
-        </SizableText>
+        {items.length > 0 ? (
+          <SizableText size="$bodyMd" color="$textSubdued">
+            {intl.formatMessage(
+              { id: ETranslations.defi_emode_need_action_subtitle },
+              { category: categoryLabel },
+            )}
+          </SizableText>
+        ) : null}
 
         {isPending ? (
           <XStack ai="center" gap="$2">

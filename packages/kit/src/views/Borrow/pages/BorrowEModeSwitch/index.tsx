@@ -102,14 +102,30 @@ function BorrowEModeSwitchView() {
       ),
     [eModeStatus, currentEModeId],
   );
-  const { checks } = useBorrowEModeRowChecks({
+  const checksEnabled = !!accountId && !!eModeStatus;
+  const { checks, refresh: refreshRowChecks } = useBorrowEModeRowChecks({
     networkId,
     accountId,
     provider,
     marketAddress,
     targetEModeIds,
-    enabled: !!accountId && !!eModeStatus,
+    enabled: checksEnabled,
   });
+
+  // Re-run the per-row switch-checks when the screen regains focus (e.g. after
+  // a blocker is resolved in Need Action and Back is tapped), so a stale row
+  // refreshes. Skip the initial mount — the hook already runs on mount.
+  const eModeChecksFocusedRef = useRef(false);
+  useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+    if (eModeChecksFocusedRef.current) {
+      refreshRowChecks();
+    } else {
+      eModeChecksFocusedRef.current = true;
+    }
+  }, [isFocused, refreshRowChecks]);
 
   // Hero = current Max LTV (stable anchor). Prefer the precise server value
   // from a check; fall back to the current category row's coarse ltv.
@@ -183,7 +199,7 @@ function BorrowEModeSwitchView() {
               const rowCheck = checks[row.eModeId];
               const action = getEModeRowAction({
                 selected: row.selected,
-                isChecking: rowCheck?.isChecking ?? false,
+                isChecking: rowCheck?.isChecking ?? checksEnabled,
                 errored: rowCheck?.errored ?? false,
                 canSwitch: rowCheck?.canSwitch,
                 itemCount: rowCheck?.itemCount ?? 0,

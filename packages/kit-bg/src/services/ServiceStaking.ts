@@ -2838,8 +2838,9 @@ class ServiceStaking extends ServiceBase {
     marketAddress: string;
     accountId: string;
     targetEModeId: number;
+    autoHandleError?: boolean;
   }) {
-    const { accountId, ...rest } = params;
+    const { accountId, autoHandleError, ...rest } = params;
     const accountAddress =
       await this.backgroundApi.serviceAccount.getAccountAddressForApi({
         networkId: params.networkId,
@@ -2851,7 +2852,13 @@ class ServiceStaking extends ServiceBase {
       code: number;
       message: string;
       data: IBorrowEModeSwitchCheck;
-    }>('/earn/v1/borrow/e-mode/switch-check', { ...rest, accountAddress });
+    }>(
+      '/earn/v1/borrow/e-mode/switch-check',
+      { ...rest, accountAddress },
+      autoHandleError === false
+        ? ({ autoHandleError: false } as any)
+        : undefined,
+    );
     return response.data;
   }
 
