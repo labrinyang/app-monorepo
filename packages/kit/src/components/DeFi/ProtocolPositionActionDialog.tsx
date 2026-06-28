@@ -1601,7 +1601,7 @@ function ProtocolPositionActionDialogContent({
     actionBody = (
       <YStack py="$6" alignItems="center">
         <SizableText size="$bodyMd" color="$textSubdued">
-          {intl.formatMessage({ id: ETranslations.global_no_data })}
+          {intl.formatMessage({ id: ETranslations.global_select_crypto })}
         </SizableText>
       </YStack>
     );
