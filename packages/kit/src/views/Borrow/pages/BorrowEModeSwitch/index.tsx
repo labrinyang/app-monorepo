@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useRef } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { useIntl } from 'react-intl';
 
@@ -27,6 +27,7 @@ import { useEarnAccount } from '../../../Staking/hooks/useEarnAccount';
 
 import { EModeBeforeAfter } from './EModeBeforeAfter';
 import { buildEModeRows, getEModeRowAction } from './emodeUtils';
+import { useBorrowEModeRowChecks } from './useBorrowEModeRowChecks';
 import { useEModeSwitch } from './useEModeSwitch';
 
 function BorrowEModeSwitchView() {
@@ -89,6 +90,26 @@ function BorrowEModeSwitchView() {
   );
   const selectedRow = rows.find((r) => r.selected);
   const targetRow = rows.find((r) => r.eModeId === targetEModeId);
+
+  const currentEModeId = eModeStatus?.eModeId ?? 0;
+  // All non-current targets, including the synthetic Off row (eModeId 0) —
+  // turning e-mode off can also be blocked (it lowers max LTV), so it gets a
+  // check too.
+  const targetEModeIds = useMemo(
+    () =>
+      [0, ...(eModeStatus?.categories ?? []).map((c) => c.eModeId)].filter(
+        (id) => id !== currentEModeId,
+      ),
+    [eModeStatus, currentEModeId],
+  );
+  const { checks } = useBorrowEModeRowChecks({
+    networkId,
+    accountId,
+    provider,
+    marketAddress,
+    targetEModeIds,
+    enabled: !!accountId && !!eModeStatus,
+  });
 
   // Hero = current Max LTV (stable anchor). Prefer the precise server value
   // from a check; fall back to the current category row's coarse ltv.
@@ -159,13 +180,30 @@ function BorrowEModeSwitchView() {
               })}
             </SizableText>
             {rows.map((row) => {
-              const action = getEModeRowAction(row);
+              const rowCheck = checks[row.eModeId];
+              const action = getEModeRowAction({
+                selected: row.selected,
+                isChecking: rowCheck?.isChecking ?? false,
+                errored: rowCheck?.errored ?? false,
+                canSwitch: rowCheck?.canSwitch,
+                itemCount: rowCheck?.itemCount ?? 0,
+              });
               const isTarget = targetEModeId === row.eModeId;
               let control: ReactNode;
               if (action === 'current') {
                 control = (
                   <SizableText size="$bodyMdMedium" color="$textSubdued">
                     {intl.formatMessage({ id: ETranslations.global_current })}
+                  </SizableText>
+                );
+              } else if (action === 'loading') {
+                control = <Skeleton h="$8" w="$20" borderRadius="$2" />;
+              } else if (action === 'unavailable') {
+                control = (
+                  <SizableText size="$bodyMdMedium" color="$textDisabled">
+                    {intl.formatMessage({
+                      id: ETranslations.defi_emode_unavailable,
+                    })}
                   </SizableText>
                 );
               } else if (action === 'needAction') {
