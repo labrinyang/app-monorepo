@@ -82,19 +82,65 @@ export function buildNeedActionItems(
   ];
 }
 
-export type IEModeRowAction = 'current' | 'switch' | 'needAction';
+export interface IEModeRowCheck {
+  isChecking: boolean;
+  errored: boolean;
+  canSwitch?: boolean;
+  itemCount: number;
+}
 
-// Drives the per-row trailing control on the e-mode switch list.
-// `canSwitch` is optional: when the backend has not populated it the field
-// is undefined and a non-disabled row falls back to 'switch' (optimistic —
-// the on-tap switch-check still routes to Need Action if it turns out
-// blocked). `disabled:true` is always a guided-unwind 'needAction'.
-export function getEModeRowAction(row: IEModeRow): IEModeRowAction {
-  if (row.selected) {
+// Collapse a switch-check response into the minimal facts the row button
+// needs. A null / non-zero code / missing data response is treated as
+// errored (the row renders as Unavailable rather than a dead-end action).
+export function summarizeSwitchCheck(
+  resp: { code: number; data: IBorrowEModeSwitchCheck | null } | null,
+): IEModeRowCheck {
+  if (!resp || resp.code !== 0 || !resp.data) {
+    return { isChecking: false, errored: true, itemCount: 0 };
+  }
+  return {
+    isChecking: false,
+    errored: false,
+    canSwitch: resp.data.canSwitch,
+    itemCount: buildNeedActionItems(resp.data).length,
+  };
+}
+
+export type IEModeRowAction =
+  | 'current'
+  | 'switch'
+  | 'needAction'
+  | 'unavailable'
+  | 'loading';
+
+// Drives the per-row trailing control on the e-mode switch list. Driven by
+// the real switch-check result (approach B), NOT by status.disabled (which
+// only means "selectable" and proved an unreliable proxy). When the backend
+// later returns canSwitch per category in the status response (approach A),
+// feed category.canSwitch + 0 itemCount here and stop running per-row
+// checks — this mapping is unchanged.
+export function getEModeRowAction(input: {
+  selected: boolean;
+  isChecking: boolean;
+  errored: boolean;
+  canSwitch?: boolean;
+  itemCount: number;
+}): IEModeRowAction {
+  if (input.selected) {
     return 'current';
   }
-  if (row.disabled || row.canSwitch === false) {
+  if (input.isChecking) {
+    return 'loading';
+  }
+  if (input.errored) {
+    return 'unavailable';
+  }
+  if (input.canSwitch === true) {
+    return 'switch';
+  }
+  if (input.canSwitch === false && input.itemCount > 0) {
     return 'needAction';
   }
-  return 'switch';
+  // canSwitch:false with no actionable blockers, or unknown => not switchable.
+  return 'unavailable';
 }

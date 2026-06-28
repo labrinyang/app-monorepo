@@ -4,10 +4,10 @@ import type {
 } from '@onekeyhq/shared/types/staking';
 
 import {
-  type IEModeRow,
   buildEModeRows,
   buildNeedActionItems,
   getEModeRowAction,
+  summarizeSwitchCheck,
 } from './emodeUtils';
 
 const status = {
@@ -109,32 +109,95 @@ describe('buildNeedActionItems', () => {
 });
 
 describe('getEModeRowAction', () => {
-  const base: IEModeRow = {
-    eModeId: 5,
-    label: 'X',
-    disabled: false,
+  const base = {
     selected: false,
-    isOff: false,
+    isChecking: false,
+    errored: false,
+    itemCount: 0,
   };
-  it('selected row → current', () => {
-    expect(getEModeRowAction({ ...base, selected: true })).toBe('current');
+
+  it('selected wins over everything', () => {
+    expect(
+      getEModeRowAction({ ...base, selected: true, isChecking: true }),
+    ).toBe('current');
   });
-  it('selected wins over disabled', () => {
-    expect(getEModeRowAction({ ...base, selected: true, disabled: true })).toBe(
-      'current',
-    );
+
+  it('in-flight check => loading', () => {
+    expect(getEModeRowAction({ ...base, isChecking: true })).toBe('loading');
   });
-  it('disabled → needAction', () => {
-    expect(getEModeRowAction({ ...base, disabled: true })).toBe('needAction');
+
+  it('errored check => unavailable', () => {
+    expect(getEModeRowAction({ ...base, errored: true })).toBe('unavailable');
   });
-  it('canSwitch:false → needAction', () => {
-    expect(getEModeRowAction({ ...base, canSwitch: false })).toBe('needAction');
-  });
-  it('canSwitch:true → switch', () => {
+
+  it('canSwitch true => switch', () => {
     expect(getEModeRowAction({ ...base, canSwitch: true })).toBe('switch');
   });
-  it('canSwitch undefined (backend not shipped) → switch', () => {
-    expect(getEModeRowAction(base)).toBe('switch');
+
+  it('canSwitch false with blockers => needAction', () => {
+    expect(getEModeRowAction({ ...base, canSwitch: false, itemCount: 2 })).toBe(
+      'needAction',
+    );
+  });
+
+  it('canSwitch false with no blockers => unavailable', () => {
+    expect(getEModeRowAction({ ...base, canSwitch: false, itemCount: 0 })).toBe(
+      'unavailable',
+    );
+  });
+
+  it('canSwitch unknown (no value) => unavailable', () => {
+    expect(getEModeRowAction({ ...base })).toBe('unavailable');
+  });
+});
+
+describe('summarizeSwitchCheck', () => {
+  const okData: IBorrowEModeSwitchCheck = {
+    canSwitch: false,
+    reasons: ['x'],
+    repayAssets: [],
+    additionalRepayAssets: [
+      {
+        reserveAddress: '0xusdc',
+        token: {
+          address: '0xusdc',
+          name: 'USD Coin',
+          symbol: 'USDC',
+          decimals: 6,
+          logoURI: '',
+        },
+      } as any,
+    ],
+    disableCollateralAssets: [],
+    collateral: {} as any,
+    debt: {} as any,
+    maxLtv: {} as any,
+    healthFactor: {} as any,
+  };
+
+  it('null response => errored', () => {
+    expect(summarizeSwitchCheck(null)).toEqual({
+      isChecking: false,
+      errored: true,
+      itemCount: 0,
+    });
+  });
+
+  it('non-zero code => errored', () => {
+    expect(summarizeSwitchCheck({ code: 70_014, data: null })).toEqual({
+      isChecking: false,
+      errored: true,
+      itemCount: 0,
+    });
+  });
+
+  it('ok response => canSwitch + blocker count', () => {
+    expect(summarizeSwitchCheck({ code: 0, data: okData })).toEqual({
+      isChecking: false,
+      errored: false,
+      canSwitch: false,
+      itemCount: 1,
+    });
   });
 });
 
