@@ -93,7 +93,7 @@ const ProtocolSectionedPositionTable = memo(
                   flexShrink={0}
                   minWidth={0}
                 >
-                  <SizableText size="$headingXs" color="$textSubdued">
+                  <SizableText size="$bodySmMedium" color="$textSubdued">
                     {section.assetType === 'supplied'
                       ? labels.position
                       : section.title}
@@ -104,7 +104,7 @@ const ProtocolSectionedPositionTable = memo(
                   flexBasis={0}
                   minWidth={0}
                 >
-                  <SizableText size="$headingXs" color="$textSubdued">
+                  <SizableText size="$bodySmMedium" color="$textSubdued">
                     {labels.balance}
                   </SizableText>
                 </Stack>
@@ -114,7 +114,7 @@ const ProtocolSectionedPositionTable = memo(
                   minWidth={0}
                   alignItems="flex-end"
                 >
-                  <SizableText size="$headingXs" color="$textSubdued">
+                  <SizableText size="$bodySmMedium" color="$textSubdued">
                     {labels.value}
                   </SizableText>
                 </Stack>

@@ -68,18 +68,10 @@ const ProtocolPositionSection = memo(
     return (
       <YStack bg="$bgSubdued" borderRadius="$2" px="$3" py="$2" gap="$2">
         <XStack alignItems="center" justifyContent="space-between">
-          <SizableText
-            size="$headingXs"
-            color="$text"
-            textTransform="uppercase"
-          >
+          <SizableText size="$bodySmMedium" color="$text">
             {section.title}
           </SizableText>
-          <SizableText
-            size="$headingXs"
-            color="$textSubdued"
-            textTransform="uppercase"
-          >
+          <SizableText size="$bodySmMedium" color="$textSubdued">
             {amountLabel}
           </SizableText>
         </XStack>
