@@ -113,14 +113,24 @@ export type IEModeRowAction =
   | 'unavailable'
   | 'loading';
 
-// Drives the per-row trailing control on the e-mode switch list. Driven by
-// the real switch-check result (approach B), NOT by status.disabled (which
-// only means "selectable" and proved an unreliable proxy). When the backend
-// later returns canSwitch per category in the status response (approach A),
-// feed category.canSwitch + 0 itemCount here and stop running per-row
-// checks — this mapping is unchanged.
+// Drives the per-row trailing control on the e-mode switch list.
+//
+// Two independent backend signals decide the control:
+//   - `disabled` (status, 是否可选): whether the category is selectable AT
+//     ALL. A `disabled:true` category cannot be switched to —
+//     borrowBuildSetEModeTransaction rejects it with 70110 — even though the
+//     switch-check may still report `canSwitch:true` (the check only validates
+//     position health, not whether it is selectable). So `disabled` is a hard
+//     gate to Unavailable, and such categories are not even switch-checked.
+//   - `canSwitch` (switch-check): for a SELECTABLE category, whether the user
+//     can switch given their positions (else Need Action to resolve blockers).
+//
+// When the backend later returns `canSwitch` per category in the status
+// response (approach A), feed category.canSwitch + 0 itemCount here and stop
+// running per-row checks — this mapping is unchanged.
 export function getEModeRowAction(input: {
   selected: boolean;
+  disabled: boolean;
   isChecking: boolean;
   errored: boolean;
   canSwitch?: boolean;
@@ -128,6 +138,9 @@ export function getEModeRowAction(input: {
 }): IEModeRowAction {
   if (input.selected) {
     return 'current';
+  }
+  if (input.disabled) {
+    return 'unavailable';
   }
   if (input.isChecking) {
     return 'loading';

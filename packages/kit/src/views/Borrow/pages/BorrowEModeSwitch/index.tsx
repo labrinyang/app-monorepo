@@ -92,14 +92,21 @@ function BorrowEModeSwitchView() {
   const targetRow = rows.find((r) => r.eModeId === targetEModeId);
 
   const currentEModeId = eModeStatus?.eModeId ?? 0;
-  // All non-current targets, including the synthetic Off row (eModeId 0) —
-  // turning e-mode off can also be blocked (it lowers max LTV), so it gets a
-  // check too.
+  // Non-current, *selectable* targets only, plus the synthetic Off row
+  // (eModeId 0, turning e-mode off, which can itself be blocked). A
+  // `disabled:true` category is not selectable — borrowBuildSetEModeTransaction
+  // rejects it with 70110 even when switch-check returns canSwitch:true — so it
+  // renders
+  // Unavailable directly (via getEModeRowAction's disabled gate) and is not
+  // switch-checked here.
   const targetEModeIds = useMemo(
     () =>
-      [0, ...(eModeStatus?.categories ?? []).map((c) => c.eModeId)].filter(
-        (id) => id !== currentEModeId,
-      ),
+      [
+        0,
+        ...(eModeStatus?.categories ?? [])
+          .filter((c) => !c.disabled)
+          .map((c) => c.eModeId),
+      ].filter((id) => id !== currentEModeId),
     [eModeStatus, currentEModeId],
   );
   const checksEnabled = !!accountId && !!eModeStatus;
@@ -199,6 +206,7 @@ function BorrowEModeSwitchView() {
               const rowCheck = checks[row.eModeId];
               const action = getEModeRowAction({
                 selected: row.selected,
+                disabled: row.disabled,
                 isChecking: rowCheck?.isChecking ?? checksEnabled,
                 errored: rowCheck?.errored ?? false,
                 canSwitch: rowCheck?.canSwitch,

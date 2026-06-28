@@ -111,6 +111,7 @@ describe('buildNeedActionItems', () => {
 describe('getEModeRowAction', () => {
   const base = {
     selected: false,
+    disabled: false,
     isChecking: false,
     errored: false,
     itemCount: 0,
@@ -120,6 +121,16 @@ describe('getEModeRowAction', () => {
     expect(
       getEModeRowAction({ ...base, selected: true, isChecking: true }),
     ).toBe('current');
+  });
+
+  it('disabled (not selectable) => unavailable', () => {
+    expect(getEModeRowAction({ ...base, disabled: true })).toBe('unavailable');
+  });
+
+  it('disabled beats canSwitch:true => unavailable (the 70110 case)', () => {
+    expect(
+      getEModeRowAction({ ...base, disabled: true, canSwitch: true }),
+    ).toBe('unavailable');
   });
 
   it('in-flight check => loading', () => {
