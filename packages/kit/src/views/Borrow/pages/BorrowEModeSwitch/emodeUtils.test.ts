@@ -37,7 +37,6 @@ describe('buildEModeRows', () => {
       eModeId: 0,
       isOff: true,
       selected: false,
-      disabled: false,
     });
     expect(rows[1]).toMatchObject({
       eModeId: 1,
@@ -47,7 +46,6 @@ describe('buildEModeRows', () => {
     });
     expect(rows[2]).toMatchObject({
       eModeId: 2,
-      disabled: true,
       selected: false,
     });
   });
@@ -109,13 +107,7 @@ describe('buildNeedActionItems', () => {
 });
 
 describe('getEModeRowAction', () => {
-  const base = {
-    selected: false,
-    disabled: false,
-    isChecking: false,
-    errored: false,
-    itemCount: 0,
-  };
+  const base = { selected: false, isChecking: false };
 
   it('selected wins over everything', () => {
     expect(
@@ -123,42 +115,26 @@ describe('getEModeRowAction', () => {
     ).toBe('current');
   });
 
-  it('disabled (not selectable) => unavailable', () => {
-    expect(getEModeRowAction({ ...base, disabled: true })).toBe('unavailable');
-  });
-
-  it('disabled beats canSwitch:true => unavailable (the 70110 case)', () => {
-    expect(
-      getEModeRowAction({ ...base, disabled: true, canSwitch: true }),
-    ).toBe('unavailable');
-  });
-
   it('in-flight check => loading', () => {
     expect(getEModeRowAction({ ...base, isChecking: true })).toBe('loading');
   });
 
-  it('errored check => unavailable', () => {
-    expect(getEModeRowAction({ ...base, errored: true })).toBe('unavailable');
+  it('loading wins over canSwitch', () => {
+    expect(
+      getEModeRowAction({ ...base, isChecking: true, canSwitch: true }),
+    ).toBe('loading');
   });
 
   it('canSwitch true => switch', () => {
     expect(getEModeRowAction({ ...base, canSwitch: true })).toBe('switch');
   });
 
-  it('canSwitch false with blockers => needAction', () => {
-    expect(getEModeRowAction({ ...base, canSwitch: false, itemCount: 2 })).toBe(
-      'needAction',
-    );
+  it('canSwitch false => needAction', () => {
+    expect(getEModeRowAction({ ...base, canSwitch: false })).toBe('needAction');
   });
 
-  it('canSwitch false with no blockers => unavailable', () => {
-    expect(getEModeRowAction({ ...base, canSwitch: false, itemCount: 0 })).toBe(
-      'unavailable',
-    );
-  });
-
-  it('canSwitch unknown (no value) => unavailable', () => {
-    expect(getEModeRowAction({ ...base })).toBe('unavailable');
+  it('canSwitch unknown (errored / not yet known) => needAction', () => {
+    expect(getEModeRowAction({ ...base })).toBe('needAction');
   });
 });
 
@@ -186,36 +162,26 @@ describe('summarizeSwitchCheck', () => {
     healthFactor: {} as any,
   };
 
-  it('null response => errored', () => {
-    expect(summarizeSwitchCheck(null)).toEqual({
-      isChecking: false,
-      errored: true,
-      itemCount: 0,
-    });
+  it('null response => no canSwitch (falls through to Need Action)', () => {
+    expect(summarizeSwitchCheck(null)).toEqual({ isChecking: false });
   });
 
-  it('non-zero code => errored', () => {
+  it('non-zero code => no canSwitch', () => {
     expect(summarizeSwitchCheck({ code: 70_014, data: null })).toEqual({
       isChecking: false,
-      errored: true,
-      itemCount: 0,
     });
   });
 
-  it('zero code with null data => errored', () => {
+  it('zero code with null data => no canSwitch', () => {
     expect(summarizeSwitchCheck({ code: 0, data: null })).toEqual({
       isChecking: false,
-      errored: true,
-      itemCount: 0,
     });
   });
 
-  it('ok response => canSwitch + blocker count', () => {
+  it('ok response => canSwitch', () => {
     expect(summarizeSwitchCheck({ code: 0, data: okData })).toEqual({
       isChecking: false,
-      errored: false,
       canSwitch: false,
-      itemCount: 1,
     });
   });
 });

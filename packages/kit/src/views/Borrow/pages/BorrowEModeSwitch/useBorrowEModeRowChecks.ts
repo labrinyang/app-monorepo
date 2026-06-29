@@ -7,17 +7,11 @@ import { summarizeSwitchCheck } from './emodeUtils';
 
 import type { IEModeRowCheck } from './emodeUtils';
 
-const CHECKING: IEModeRowCheck = {
-  isChecking: true,
-  errored: false,
-  itemCount: 0,
-};
+const CHECKING: IEModeRowCheck = { isChecking: true };
 
-const ERRORED: IEModeRowCheck = {
-  isChecking: false,
-  errored: true,
-  itemCount: 0,
-};
+// No canSwitch => the row falls through to Need Action (its detail screen
+// re-checks and surfaces the real reason).
+const ERRORED: IEModeRowCheck = { isChecking: false };
 
 // Approach B: run one switch-check per non-current target (the screen passes
 // the target eModeIds, including the synthetic Off=0). Results stream into a

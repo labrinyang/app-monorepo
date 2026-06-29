@@ -92,21 +92,17 @@ function BorrowEModeSwitchView() {
   const targetRow = rows.find((r) => r.eModeId === targetEModeId);
 
   const currentEModeId = eModeStatus?.eModeId ?? 0;
-  // Non-current, *selectable* targets only, plus the synthetic Off row
-  // (eModeId 0, turning e-mode off, which can itself be blocked). A
-  // `disabled:true` category is not selectable — borrowBuildSetEModeTransaction
-  // rejects it with 70110 even when switch-check returns canSwitch:true — so it
-  // renders
-  // Unavailable directly (via getEModeRowAction's disabled gate) and is not
-  // switch-checked here.
+  // Every non-current category, plus the synthetic Off row (eModeId 0). We do
+  // NOT pre-filter on `disabled`: it is account-derived and unreliable (can read
+  // true for a category switch-check confirms is switchable), so each row's
+  // Switch / Need Action is decided by its own switch-check `canSwitch`.
+  // ponytail: fires one switch-check per non-current category on open; approach
+  // A (canSwitch in the status response) removes the per-row calls.
   const targetEModeIds = useMemo(
     () =>
-      [
-        0,
-        ...(eModeStatus?.categories ?? [])
-          .filter((c) => !c.disabled)
-          .map((c) => c.eModeId),
-      ].filter((id) => id !== currentEModeId),
+      [0, ...(eModeStatus?.categories ?? []).map((c) => c.eModeId)].filter(
+        (id) => id !== currentEModeId,
+      ),
     [eModeStatus, currentEModeId],
   );
   const checksEnabled = !!accountId && !!eModeStatus;
@@ -206,11 +202,8 @@ function BorrowEModeSwitchView() {
               const rowCheck = checks[row.eModeId];
               const action = getEModeRowAction({
                 selected: row.selected,
-                disabled: row.disabled,
                 isChecking: rowCheck?.isChecking ?? checksEnabled,
-                errored: rowCheck?.errored ?? false,
                 canSwitch: rowCheck?.canSwitch,
-                itemCount: rowCheck?.itemCount ?? 0,
               });
               const isTarget = targetEModeId === row.eModeId;
               let control: ReactNode;
@@ -222,14 +215,6 @@ function BorrowEModeSwitchView() {
                 );
               } else if (action === 'loading') {
                 control = <Skeleton h="$8" w="$20" borderRadius="$2" />;
-              } else if (action === 'unavailable') {
-                control = (
-                  <SizableText size="$bodyMdMedium" color="$textDisabled">
-                    {intl.formatMessage({
-                      id: ETranslations.defi_emode_unavailable,
-                    })}
-                  </SizableText>
-                );
               } else if (action === 'needAction') {
                 control = (
                   <Button

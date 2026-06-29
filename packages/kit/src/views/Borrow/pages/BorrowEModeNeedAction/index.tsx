@@ -259,18 +259,6 @@ function BorrowEModeNeedActionView() {
             ))}
           </YStack>
         ) : null}
-
-        {!isChecking &&
-        !isPending &&
-        check &&
-        items.length === 0 &&
-        !canSwitch ? (
-          <SizableText size="$bodyMd" color="$textSubdued">
-            {intl.formatMessage({
-              id: ETranslations.defi_emode_unavailable_desc,
-            })}
-          </SizableText>
-        ) : null}
       </Page.Body>
       <Page.Footer
         onConfirmText={intl.formatMessage({
