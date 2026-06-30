@@ -78,9 +78,13 @@ function isPercentageAction(action: EDeFiPositionAction) {
 function getActionLabel({
   action,
   intl,
+  hasRewards = false,
 }: {
   action: EDeFiPositionAction;
   intl: ReturnType<typeof useIntl>;
+  // Remove-liquidity only "& Claim rewards" when the position holds rewards;
+  // a plain LP with no rewards stays "Remove".
+  hasRewards?: boolean;
 }) {
   if (action === EDeFiPositionAction.Withdraw) {
     return intl.formatMessage({ id: ETranslations.global_withdraw });
@@ -96,7 +100,9 @@ function getActionLabel({
   }
   if (action === EDeFiPositionAction.RemoveLiquidity) {
     return intl.formatMessage({
-      id: ETranslations.dexmarket_details_liquidity_change_remove,
+      id: hasRewards
+        ? ETranslations.earn_remove_and_claim_rewards__action
+        : ETranslations.dexmarket_details_liquidity_change_remove,
     });
   }
   return action;
@@ -610,6 +616,7 @@ function buildDeFiActionTxConfirmInfo({
   percent,
   amount,
   intl,
+  hasRewards,
 }: {
   action: IResolvedDeFiPositionAction;
   selectedAsset: IResolvedDeFiPositionActionAsset;
@@ -618,6 +625,7 @@ function buildDeFiActionTxConfirmInfo({
   // absent, the amount is derived from `percent`.
   amount?: string;
   intl: ReturnType<typeof useIntl>;
+  hasRewards?: boolean;
 }): IDeFiActionTxConfirmInfo {
   const explicitAmount = amount !== undefined && amount.trim() !== '';
   let assetAmount: string;
@@ -630,7 +638,7 @@ function buildDeFiActionTxConfirmInfo({
   }
 
   return {
-    actionLabel: getActionLabel({ action: action.action, intl }),
+    actionLabel: getActionLabel({ action: action.action, intl, hasRewards }),
     protocolId: action.protocolId,
     assetAmount,
     assetSymbol: selectedAsset.symbol,
@@ -722,6 +730,8 @@ type IProtocolPositionActionSubmitParams = {
   amount?: string;
   // Full close via Max: send bps=10000 so an accruing balance can't leave dust.
   isMaxAmount?: boolean;
+  // Position holds rewards — drives the "Remove & Claim rewards" tx label.
+  hasRewards?: boolean;
   onBeforeNavigateConfirm?: () => void | Promise<void>;
 };
 
@@ -784,6 +794,7 @@ function useProtocolPositionActionSubmit({
       percent,
       amount,
       isMaxAmount,
+      hasRewards,
       onBeforeNavigateConfirm,
     }: IProtocolPositionActionSubmitParams) => {
       if (selectedAssets.length === 0) {
@@ -919,6 +930,7 @@ function useProtocolPositionActionSubmit({
                 percent,
                 amount: displayAmount,
                 intl,
+                hasRewards,
               }),
             }),
           );
@@ -1332,11 +1344,13 @@ function ProtocolPositionActionDialogContent({
   accountId,
   networkId,
   action,
+  hasRewards,
   onSuccess,
 }: {
   accountId: string;
   networkId: string;
   action: IResolvedDeFiPositionAction;
+  hasRewards?: boolean;
   onSuccess?: (
     params: IProtocolPositionActionSuccessParams,
   ) => void | Promise<void>;
@@ -1384,7 +1398,11 @@ function ProtocolPositionActionDialogContent({
         ),
     [action.assets, selectedAssetIndexes],
   );
-  const actionLabel = getActionLabel({ action: action.action, intl });
+  const actionLabel = getActionLabel({
+    action: action.action,
+    intl,
+    hasRewards,
+  });
   const priceUnavailableLabel = intl.formatMessage({
     id: ETranslations.wallet_price_unavailable,
   });
@@ -1545,6 +1563,7 @@ function ProtocolPositionActionDialogContent({
       await submitProtocolPositionAction({
         action,
         selectedAssets,
+        hasRewards,
         percent: isPercentAction ? actionPercent : undefined,
         amount: useManualAmountInput ? amount : undefined,
         isMaxAmount: useManualAmountInput ? isMaxAmount : undefined,
@@ -1733,11 +1752,13 @@ function showProtocolPositionActionDialog({
   accountId,
   networkId,
   action,
+  hasRewards,
   onSuccess,
 }: {
   accountId: string;
   networkId: string;
   action: IResolvedDeFiPositionAction;
+  hasRewards?: boolean;
   onSuccess?: (
     params: IProtocolPositionActionSuccessParams,
   ) => void | Promise<void>;
@@ -1749,6 +1770,7 @@ function showProtocolPositionActionDialog({
         accountId={accountId}
         networkId={networkId}
         action={action}
+        hasRewards={hasRewards}
         onSuccess={onSuccess}
       />
     ),
