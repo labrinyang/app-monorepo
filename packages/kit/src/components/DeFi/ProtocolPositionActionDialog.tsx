@@ -19,7 +19,6 @@ import NumberSizeableTextWrapper from '@onekeyhq/kit/src/components/NumberSizeab
 import { Token, TokenGroup } from '@onekeyhq/kit/src/components/Token';
 import { useSignatureConfirm } from '@onekeyhq/kit/src/hooks/useSignatureConfirm';
 import { validateAmountInput } from '@onekeyhq/kit/src/utils/validateAmountInput';
-import { PerpsSlider } from '@onekeyhq/kit/src/views/Perp/components/PerpsSlider';
 import { SendAutoSizeAmountInput } from '@onekeyhq/kit/src/views/Send/components/SendAutoSizeAmountInput';
 import { useSettingsPersistAtom } from '@onekeyhq/kit-bg/src/states/jotai/atoms';
 import { getNetworkIdsMap } from '@onekeyhq/shared/src/config/networkIds';
@@ -56,7 +55,6 @@ import {
 } from './ProtocolValueCell';
 
 const DEFAULT_ACTION_PERCENT = 100;
-const PERCENTAGE_SLIDER_SEGMENTS = 4;
 const PERCENTAGE_PRESET_VALUES = [25, 50, 75, 100] as const;
 
 function normalizeActionPercent(percent?: number) {
@@ -1037,27 +1035,6 @@ function ProtocolPositionActionPercentPresetRow({
   );
 }
 
-function ProtocolPositionActionPercentSlider({
-  percent,
-  onChange,
-}: {
-  percent: number;
-  onChange: (percent: number) => void;
-}) {
-  const normalizedPercent = normalizeActionPercent(percent);
-  return (
-    <PerpsSlider
-      value={normalizedPercent}
-      onChange={(value) => onChange(normalizeActionPercent(value))}
-      min={0}
-      max={100}
-      segments={PERCENTAGE_SLIDER_SEGMENTS}
-      sliderHeight={6}
-      snapTapToSegment
-    />
-  );
-}
-
 // The position/balance context row shared by both flows: an icon + label on the
 // left, the value on the right. Withdraw shows the available token balance;
 // remove-liquidity shows the pool it's drawing from. Going to the full amount is
@@ -1694,17 +1671,11 @@ function ProtocolPositionActionDialogContent({
             }
           />
         ) : null}
-        <YStack gap="$3">
-          <ProtocolPositionActionPercentSlider
-            percent={actionPercent}
-            onChange={setActionPercent}
-          />
-          <ProtocolPositionActionPercentPresetRow
-            percent={actionPercent}
-            maxLabel={maxLabel}
-            onChange={setActionPercent}
-          />
-        </YStack>
+        <ProtocolPositionActionPercentPresetRow
+          percent={actionPercent}
+          maxLabel={maxLabel}
+          onChange={setActionPercent}
+        />
         <ProtocolPositionActionReceive
           label={resultLabel}
           assets={aggregatedOutputPreviewAssets}
