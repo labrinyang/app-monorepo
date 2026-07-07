@@ -501,6 +501,7 @@ function ProtocolLendingActionDefiContent({
   source,
   hasDebts,
   onSuccess,
+  refreshAction,
 }: {
   accountId: string;
   networkId: string;
@@ -510,6 +511,9 @@ function ProtocolLendingActionDefiContent({
   onSuccess?: (
     params: IProtocolPositionActionSuccessParams,
   ) => void | Promise<void>;
+  refreshAction?: (
+    staleAction: IResolvedDeFiPositionAction,
+  ) => Promise<IResolvedDeFiPositionAction | undefined>;
 }) {
   const intl = useIntl();
   const submitProtocolPositionAction = useProtocolPositionActionSubmit({
@@ -523,9 +527,19 @@ function ProtocolLendingActionDefiContent({
     },
   ] = useSettingsPersistAtom();
 
+  // A stay-refresh swaps in the re-resolved action; everything below derives
+  // from activeAction so balances always match the last settled state.
+  const [actionOverride, setActionOverride] = useState<
+    IResolvedDeFiPositionAction | undefined
+  >(undefined);
+  const activeAction = actionOverride ?? source.action;
+  const closeRef = useRef<(() => void | Promise<void>) | undefined>(undefined);
+  const [submitting, setSubmitting] = useState(false);
+  const [isRefreshingAction, setIsRefreshingAction] = useState(false);
+
   const assets = useMemo(
-    () => defiActionUtils.filterPositiveActionAssets(source.action.assets),
-    [source.action.assets],
+    () => defiActionUtils.filterPositiveActionAssets(activeAction.assets),
+    [activeAction.assets],
   );
   const [selectedIndex, setSelectedIndex] = useState(0);
   const selectedAsset = assets[selectedIndex];
@@ -698,6 +712,33 @@ function ProtocolLendingActionDefiContent({
     resetAmountForAsset(assets[index]);
   };
 
+  const handleStayRefresh = async () => {
+    // Without an opener refresh callback there is no fresh data to show —
+    // fall back to today's behavior and return to the page.
+    if (!refreshAction) {
+      void closeRef.current?.();
+      return;
+    }
+    setIsRefreshingAction(true);
+    try {
+      const fresh = await refreshAction(activeAction);
+      const freshAssets = fresh
+        ? defiActionUtils.filterPositiveActionAssets(fresh.assets)
+        : [];
+      if (!fresh || freshAssets.length === 0) {
+        void closeRef.current?.();
+        return;
+      }
+      setActionOverride(fresh);
+      setSelectedIndex(0);
+      resetAmountForAsset(freshAssets[0]);
+    } catch {
+      void closeRef.current?.();
+    } finally {
+      setIsRefreshingAction(false);
+    }
+  };
+
   const handleConfirm = async ({
     close,
     preventClose,
@@ -705,38 +746,50 @@ function ProtocolLendingActionDefiContent({
     close?: () => void | Promise<void>;
     preventClose: () => void;
   }) => {
-    if (!selectedAsset) {
-      preventClose();
-      return;
-    }
+    // We own the close timing now: keep the dialog mounted through the confirm
+    // hop and let the settle callback decide close-vs-stay after the tx lands.
+    preventClose();
+    if (!selectedAsset || submitting) return;
+    closeRef.current = close;
     setSubmitError(undefined);
-    // Keep the dialog open while the server builds the tx (button shows
-    // loading); close it right before any signing/tx-confirm modal opens so the
-    // old dialog doesn't stack above the confirm page.
-    let isActionDialogClosed = false;
+    setSubmitting(true);
+    const isMultiAsset = assets.length > 1;
+    // Max submits bps=10000 — the only defi-content shape that fully closes.
+    const submittedIsFullClose = isMaxAmount;
     try {
       await submitProtocolPositionAction({
-        action: source.action,
+        action: activeAction,
         selectedAssets: [selectedAsset],
         amount,
         isMaxAmount,
-        isErrorToastSuppressed: () => !isActionDialogClosed,
-        onBeforeNavigateConfirm: () => {
-          if (isActionDialogClosed) return;
-          isActionDialogClosed = true;
-          // Fire the close without awaiting it — Dialog.close resolves on a
-          // fixed 300ms teardown timer that would delay tx-confirm opening.
-          void close?.();
+        // The dialog never closes before navigation now, so errors always
+        // render inline instead of the hook's toast.
+        isErrorToastSuppressed: () => true,
+        onSettleResult: async ({ status }) => {
+          const navigationDecision = resolvePostActionNavigation({
+            txStatus: status,
+            isFullClose: submittedIsFullClose,
+            isMultiAsset,
+          });
+          if (navigationDecision === 'closeToPage') {
+            void closeRef.current?.();
+            return;
+          }
+          if (navigationDecision === 'stayWithError') {
+            setSubmitError(
+              intl.formatMessage({ id: ETranslations.global_failed }),
+            );
+            return;
+          }
+          await handleStayRefresh();
         },
       });
     } catch (error) {
-      if (
-        !isActionDialogClosed &&
-        !isUserRejectedErrorMessage({ error, intl })
-      ) {
+      if (!isUserRejectedErrorMessage({ error, intl })) {
         setSubmitError(getErrorMessage(error));
       }
-      preventClose();
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -827,8 +880,8 @@ function ProtocolLendingActionDefiContent({
         onConfirmText={actionLabel}
         onConfirm={handleConfirm}
         confirmButtonProps={{
-          disabled: isConfirmDisabled,
-          loading: isRepayWalletBalancePending,
+          disabled: isConfirmDisabled || isRefreshingAction,
+          loading: submitting || isRefreshingAction || isRepayWalletBalancePending,
         }}
       />
     </YStack>
@@ -1714,6 +1767,7 @@ function showProtocolLendingActionDialog({
   source,
   hasDebts,
   onSuccess,
+  refreshAction,
 }: {
   accountId: string;
   networkId: string;
@@ -1723,6 +1777,9 @@ function showProtocolLendingActionDialog({
   onSuccess?: (
     params: IProtocolPositionActionSuccessParams,
   ) => void | Promise<void>;
+  refreshAction?: (
+    staleAction: IResolvedDeFiPositionAction,
+  ) => Promise<IResolvedDeFiPositionAction | undefined>;
 }) {
   Dialog.show({
     showFooter: false,
@@ -1744,6 +1801,7 @@ function showProtocolLendingActionDialog({
           source={source}
           hasDebts={hasDebts}
           onSuccess={onSuccess}
+          refreshAction={refreshAction}
         />
       ),
   });
