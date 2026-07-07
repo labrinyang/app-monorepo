@@ -779,9 +779,10 @@ function ProtocolLendingActionDefiContent({
             setSubmitError(
               intl.formatMessage({ id: ETranslations.global_failed }),
             );
-            return;
+            return false;
           }
           await handleStayRefresh();
+          return false;
         },
       });
     } catch (error) {
@@ -1335,7 +1336,7 @@ function ProtocolLendingActionBorrowContent({
       }
       if (navigationDecision === 'stayWithError') {
         setSubmitError(intl.formatMessage({ id: ETranslations.global_failed }));
-        return;
+        return false;
       }
       // stayAndRefresh: reset input, re-arm the withdraw prefill, and pull
       // fresh balances (the bg memo would otherwise serve 1-minute-old data).
@@ -1348,6 +1349,7 @@ function ProtocolLendingActionBorrowContent({
       await backgroundApiProxy.serviceStaking.clearBorrowAssetsListCache();
       void runAssetsList();
       void runManagePage();
+      return false;
     };
     if (actionType === 'repay') {
       await handleBorrowRepay({

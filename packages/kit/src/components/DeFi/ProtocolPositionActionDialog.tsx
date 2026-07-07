@@ -1943,9 +1943,10 @@ function ProtocolPositionActionDialogContent({
             setSubmitError(
               intl.formatMessage({ id: ETranslations.global_failed }),
             );
-            return;
+            return false;
           }
           await handleStayRefresh();
+          return false;
         },
       });
     } catch (error) {

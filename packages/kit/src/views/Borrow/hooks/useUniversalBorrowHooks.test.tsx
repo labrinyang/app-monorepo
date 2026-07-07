@@ -555,14 +555,15 @@ describe('useUniversalBorrowRepay settle plumbing', () => {
 
   async function runRepayAndSettle({
     sheetStatus,
+    onSettleResult = jest.fn(),
   }: {
     sheetStatus: EOnChainHistoryTxStatus | undefined;
+    onSettleResult?: jest.Mock;
   }) {
     (showDeFiActionTxConfirmDialog as jest.Mock).mockResolvedValueOnce(
       sheetStatus,
     );
     const onSuccess = jest.fn();
-    const onSettleResult = jest.fn();
     let confirmOptions:
       | { onSuccess: (data: ISendTxOnSuccessData[]) => Promise<void> }
       | undefined;
@@ -617,5 +618,25 @@ describe('useUniversalBorrowRepay settle plumbing', () => {
       data: expect.anything(),
     });
     expect(onSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips onSuccess when onSettleResult vetoes with false after a Success settle', async () => {
+    const onSettleResult = jest.fn().mockResolvedValue(false);
+    const { onSuccess } = await runRepayAndSettle({
+      sheetStatus: EOnChainHistoryTxStatus.Success,
+      onSettleResult,
+    });
+    expect(onSettleResult).toHaveBeenCalledTimes(1);
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it('skips onSuccess when onSettleResult vetoes with false on pending-dismiss (undefined status)', async () => {
+    const onSettleResult = jest.fn().mockResolvedValue(false);
+    const { onSuccess } = await runRepayAndSettle({
+      sheetStatus: undefined,
+      onSettleResult,
+    });
+    expect(onSettleResult).toHaveBeenCalledTimes(1);
+    expect(onSuccess).not.toHaveBeenCalled();
   });
 });

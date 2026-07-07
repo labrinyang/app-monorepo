@@ -167,7 +167,9 @@ const handleBorrowSuccess = async ({
   networkId: string;
   accountId?: string;
   stakingInfo?: IStakingInfo;
-  onSettleResult?: (result: IBorrowSettleResult) => void | Promise<void>;
+  onSettleResult?: (
+    result: IBorrowSettleResult,
+  ) => boolean | void | Promise<boolean | void>;
   onSuccess?: IModalSendParamList['SendConfirm']['onSuccess'];
 }) => {
   const latestTxId =
@@ -204,7 +206,13 @@ const handleBorrowSuccess = async ({
       networkId,
       data,
     });
-    await onSettleResult?.({ status: finalStatus, data });
+    const shouldContinueSuccess = await onSettleResult?.({
+      status: finalStatus,
+      data,
+    });
+    if (shouldContinueSuccess === false) {
+      return;
+    }
     if (finalStatus === EOnChainHistoryTxStatus.Failed) {
       return;
     }
@@ -235,7 +243,9 @@ type IBorrowBuildTxParams = {
   // when dismissed while still pending), before the legacy onSuccess. Only
   // the sheet paths (Withdraw / Repay labels) ever call it. Failed still
   // short-circuits onSuccess so success-only refreshes don't run.
-  onSettleResult?: (result: IBorrowSettleResult) => void | Promise<void>;
+  onSettleResult?: (
+    result: IBorrowSettleResult,
+  ) => boolean | void | Promise<boolean | void>;
   onSuccess?: IModalSendParamList['SendConfirm']['onSuccess'];
   onFail?: IModalSendParamList['SendConfirm']['onFail'];
 };
