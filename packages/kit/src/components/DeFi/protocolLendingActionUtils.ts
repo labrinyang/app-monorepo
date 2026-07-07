@@ -219,24 +219,39 @@ export function resolveLendingStepState({
   return { kind: 'action' };
 }
 
-export type IPostActionNavigation =
-  | 'closeToPage'
-  | 'stayAndRefresh'
-  | 'stayWithError';
+export function resolveVisibleLendingStepState({
+  liveStepState,
+  submitting,
+  submittedStepKind,
+}: {
+  liveStepState: ILendingStepState;
+  submitting: boolean;
+  submittedStepKind?: ILendingStepState['kind'];
+}): ILendingStepState {
+  // Opening tx confirm blurs the current route before the new sheet is visible;
+  // keep the clicked step label stable through that navigation gap.
+  if (submitting && submittedStepKind) {
+    return { kind: submittedStepKind };
+  }
+  return liveStepState;
+}
 
-// Post-settle navigation rule. `txStatus` undefined means the confirming
-// sheet was dismissed while the tx was still pending (or the receipt poll
-// exhausted) — an unconfirmed tx must never close to the page.
+export type IPostActionNavigation = 'closeToPage' | 'stayAndRefresh';
+
+// Post-settle navigation rule. Final chain statuses are owned by the tx-status
+// observer; once it resolves Success/Failed, the action dialog should close.
+// `txStatus` undefined means there was no txid or the receipt poll exhausted,
+// so the action dialog keeps the recovery state.
 export function resolvePostActionNavigation({
   txStatus,
-  isFullClose,
-  isMultiAsset,
 }: {
   txStatus: EOnChainHistoryTxStatus | undefined;
-  isFullClose: boolean;
-  isMultiAsset: boolean;
 }): IPostActionNavigation {
-  if (txStatus === EOnChainHistoryTxStatus.Failed) return 'stayWithError';
-  if (txStatus !== EOnChainHistoryTxStatus.Success) return 'stayAndRefresh';
-  return isFullClose && !isMultiAsset ? 'closeToPage' : 'stayAndRefresh';
+  if (
+    txStatus === EOnChainHistoryTxStatus.Success ||
+    txStatus === EOnChainHistoryTxStatus.Failed
+  ) {
+    return 'closeToPage';
+  }
+  return 'stayAndRefresh';
 }

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import BigNumber from 'bignumber.js';
 import { useIntl } from 'react-intl';
 
+import type { useInPageDialog } from '@onekeyhq/components';
 import {
   Alert,
   ButtonFrame,
@@ -60,6 +61,7 @@ import {
   resolveLendingStepState,
   resolvePostActionNavigation,
   resolveProtocolLendingRepayAmountState,
+  resolveVisibleLendingStepState,
 } from './protocolLendingActionUtils';
 import {
   type IProtocolPositionActionSuccessParams,
@@ -753,9 +755,6 @@ function ProtocolLendingActionDefiContent({
     closeRef.current = close;
     setSubmitError(undefined);
     setSubmitting(true);
-    const isMultiAsset = assets.length > 1;
-    // Max submits bps=10000 — the only defi-content shape that fully closes.
-    const submittedIsFullClose = isMaxAmount;
     try {
       await submitProtocolPositionAction({
         action: activeAction,
@@ -768,18 +767,10 @@ function ProtocolLendingActionDefiContent({
         onSettleResult: async ({ status }) => {
           const navigationDecision = resolvePostActionNavigation({
             txStatus: status,
-            isFullClose: submittedIsFullClose,
-            isMultiAsset,
           });
           if (navigationDecision === 'closeToPage') {
             void closeRef.current?.();
             return;
-          }
-          if (navigationDecision === 'stayWithError') {
-            setSubmitError(
-              intl.formatMessage({ id: ETranslations.global_failed }),
-            );
-            return false;
           }
           await handleStayRefresh();
           return false;
@@ -1036,6 +1027,9 @@ function ProtocolLendingActionBorrowContent({
   // Footer confirm loading is overridden by confirmButtonProps and released
   // early by preventClose(), so the dialog owns the build spinner and guard.
   const [submitting, setSubmitting] = useState(false);
+  const submittedStepKindRef = useRef<
+    ReturnType<typeof resolveLendingStepState>['kind'] | undefined
+  >(undefined);
   // An approve was initiated this session — the only thing it controls is the
   // "Step 2 of 2" suffix once needsApproval flips off.
   const [approveSessionActive, setApproveSessionActive] = useState(false);
@@ -1301,8 +1295,8 @@ function ProtocolLendingActionBorrowContent({
   const handleBorrowRepay = useUniversalBorrowRepay({ accountId, networkId });
 
   // The dialog stays mounted through the confirm hop; the settle callback
-  // below decides whether it closes (full close, single asset) or stays with
-  // refreshed data. closeRef is captured per-confirm in handleFooterConfirm.
+  // below closes after final chain status, or keeps recovery state if the
+  // receipt poll exhausts.
   const submitBorrowTx = useCallback(async () => {
     const { provider, marketAddress } = source;
     const tags: string[] = [
@@ -1317,8 +1311,6 @@ function ProtocolLendingActionBorrowContent({
     const protocolLabel = earnUtils.getEarnProviderName({
       providerName: source.providerDisplayName ?? provider,
     });
-    const isMultiAsset = source.selectable && assetsList.assets.length > 1;
-    const submittedIsFullClose = isFullClose;
     const onSettleResult = async ({
       status,
     }: {
@@ -1327,18 +1319,12 @@ function ProtocolLendingActionBorrowContent({
     }) => {
       const navigationDecision = resolvePostActionNavigation({
         txStatus: status,
-        isFullClose: submittedIsFullClose,
-        isMultiAsset,
       });
       if (navigationDecision === 'closeToPage') {
         void closeRef.current?.();
         return;
       }
-      if (navigationDecision === 'stayWithError') {
-        setSubmitError(intl.formatMessage({ id: ETranslations.global_failed }));
-        return false;
-      }
-      // stayAndRefresh: reset input, re-arm the withdraw prefill, and pull
+      // Pending/unknown: reset input, re-arm the withdraw prefill, and pull
       // fresh balances (the bg memo would otherwise serve 1-minute-old data).
       setApproveSessionActive(false);
       setAmount('');
@@ -1398,11 +1384,9 @@ function ProtocolLendingActionBorrowContent({
     accountId,
     actionType,
     amount,
-    assetsList.assets,
     effectiveToken,
     handleBorrowRepay,
     handleBorrowWithdraw,
-    intl,
     isFullClose,
     networkId,
     onSuccess,
@@ -1427,6 +1411,12 @@ function ProtocolLendingActionBorrowContent({
       onAllowanceReady: () => setApproveSessionActive(true),
     });
 
+  const stepState = resolveLendingStepState({
+    needsApproval,
+    waitingAllowance,
+    approveSessionActive,
+  });
+
   const handleFooterConfirm = async ({
     close,
     preventClose,
@@ -1439,6 +1429,7 @@ function ProtocolLendingActionBorrowContent({
     // hop and the settle callback decides close-vs-stay after the tx lands.
     preventClose();
     if (submitting) return;
+    submittedStepKindRef.current = stepState.kind;
     setSubmitting(true);
     setSubmitError(undefined);
     try {
@@ -1453,6 +1444,7 @@ function ProtocolLendingActionBorrowContent({
         setSubmitError(getErrorMessage(error));
       }
     } finally {
+      submittedStepKindRef.current = undefined;
       setSubmitting(false);
     }
   };
@@ -1551,10 +1543,10 @@ function ProtocolLendingActionBorrowContent({
   }
   const isInitialLoading = !hasLoadedOnceRef.current;
 
-  const stepState = resolveLendingStepState({
-    needsApproval,
-    waitingAllowance,
-    approveSessionActive,
+  const visibleStepState = resolveVisibleLendingStepState({
+    liveStepState: stepState,
+    submitting,
+    submittedStepKind: submittedStepKindRef.current,
   });
   const stepOfLabel = (step: number) =>
     intl.formatMessage(
@@ -1562,15 +1554,15 @@ function ProtocolLendingActionBorrowContent({
       { step, total: 2 },
     );
   let confirmText = actionLabel;
-  if (stepState.kind === 'waitingAllowance') {
+  if (visibleStepState.kind === 'waitingAllowance') {
     confirmText = intl.formatMessage({
       id: ETranslations.defi_lending_waiting_approval,
     });
-  } else if (stepState.kind === 'approveStep1') {
+  } else if (visibleStepState.kind === 'approveStep1') {
     confirmText = `${intl.formatMessage({
       id: ETranslations.global_approve,
     })} · ${stepOfLabel(1)}`;
-  } else if (stepState.kind === 'actionStep2') {
+  } else if (visibleStepState.kind === 'actionStep2') {
     confirmText = `${actionLabel} · ${stepOfLabel(2)}`;
   }
 
@@ -1734,7 +1726,7 @@ function ProtocolLendingActionBorrowContent({
           checkAmountAlerts={actionResult.checkAmountAlerts}
         />
       ) : null}
-      {stepState.kind === 'approveStep1' && !isInitialLoading ? (
+      {visibleStepState.kind === 'approveStep1' && !isInitialLoading ? (
         <SizableText size="$bodySm" color="$textSubdued" textAlign="center">
           {intl.formatMessage(
             { id: ETranslations.defi_lending_approve_first__hint },
@@ -1770,6 +1762,7 @@ function showProtocolLendingActionDialog({
   hasDebts,
   onSuccess,
   refreshAction,
+  dialog,
 }: {
   accountId: string;
   networkId: string;
@@ -1782,8 +1775,10 @@ function showProtocolLendingActionDialog({
   refreshAction?: (
     staleAction: IResolvedDeFiPositionAction,
   ) => Promise<IResolvedDeFiPositionAction | undefined>;
+  dialog?: ReturnType<typeof useInPageDialog>;
 }) {
-  Dialog.show({
+  const DialogInstance = dialog ?? Dialog;
+  DialogInstance.show({
     showFooter: false,
     renderContent:
       source.type === 'borrow' ? (

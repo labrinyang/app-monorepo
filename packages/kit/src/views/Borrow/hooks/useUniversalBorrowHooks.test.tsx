@@ -609,7 +609,7 @@ describe('useUniversalBorrowRepay settle plumbing', () => {
     );
   });
 
-  it('passes undefined status (sheet dismissed while pending) and still runs onSuccess', async () => {
+  it('passes undefined status when final-status polling exhausts and skips onSuccess', async () => {
     const { onSuccess, onSettleResult } = await runRepayAndSettle({
       sheetStatus: undefined,
     });
@@ -617,7 +617,7 @@ describe('useUniversalBorrowRepay settle plumbing', () => {
       status: undefined,
       data: expect.anything(),
     });
-    expect(onSuccess).toHaveBeenCalledTimes(1);
+    expect(onSuccess).not.toHaveBeenCalled();
   });
 
   it('skips onSuccess when onSettleResult vetoes with false after a Success settle', async () => {
@@ -630,7 +630,7 @@ describe('useUniversalBorrowRepay settle plumbing', () => {
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
-  it('skips onSuccess when onSettleResult vetoes with false on pending-dismiss (undefined status)', async () => {
+  it('skips onSuccess when onSettleResult vetoes with false on undefined settle status', async () => {
     const onSettleResult = jest.fn().mockResolvedValue(false);
     const { onSuccess } = await runRepayAndSettle({
       sheetStatus: undefined,

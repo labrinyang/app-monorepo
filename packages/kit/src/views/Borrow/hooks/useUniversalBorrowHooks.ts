@@ -175,8 +175,9 @@ const handleBorrowSuccess = async ({
   const latestTxId =
     Array.isArray(data) && data.length > 0 ? getLatestTxId(data) : undefined;
 
-  // Aave withdraw / repay get the shared confirming sheet before the caller's
-  // refresh; supply / borrow keep the existing pending-badge flow.
+  // Aave withdraw / repay get the shared tx-status observer and confirming
+  // sheet before the caller's refresh; supply / borrow keep the existing
+  // pending-badge flow.
   const label = stakingInfo?.label;
   const shouldShowConfirmSheet =
     !!accountId &&
@@ -213,7 +214,7 @@ const handleBorrowSuccess = async ({
     if (shouldContinueSuccess === false) {
       return;
     }
-    if (finalStatus === EOnChainHistoryTxStatus.Failed) {
+    if (finalStatus !== EOnChainHistoryTxStatus.Success) {
       return;
     }
   }
@@ -239,9 +240,9 @@ type IBorrowBuildTxParams = {
   // Awaited right before navigationToTxConfirm so dialog callers can close
   // themselves at navigation time instead of before the build request.
   onBeforeNavigate?: () => void | Promise<void>;
-  // Fires after the confirming sheet resolves (Success / Failed / undefined
-  // when dismissed while still pending), before the legacy onSuccess. Only
-  // the sheet paths (Withdraw / Repay labels) ever call it. Failed still
+  // Fires after the tx-status observer resolves (Success / Failed / undefined
+  // when the receipt poll exhausts), before the legacy onSuccess. Only the
+  // sheet paths (Withdraw / Repay labels) ever call it. Failed still
   // short-circuits onSuccess so success-only refreshes don't run.
   onSettleResult?: (
     result: IBorrowSettleResult,
@@ -566,7 +567,11 @@ export function useUniversalBorrowRepayWithCollateral({
           | undefined;
 
         if (!collateralReserveAddress) {
-          throw new OneKeyLocalError('collateralReserveAddress is required');
+          throw new OneKeyLocalError(
+            intl.formatMessage({
+              id: ETranslations.borrow_repay_with_collateral_unavailable__msg,
+            }),
+          );
         }
 
         if (needsSetupLut) {

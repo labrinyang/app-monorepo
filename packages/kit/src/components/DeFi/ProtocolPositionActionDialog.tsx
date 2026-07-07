@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import BigNumber from 'bignumber.js';
 import { useIntl } from 'react-intl';
 
+import type { useInPageDialog } from '@onekeyhq/components';
 import {
   Alert,
   Button,
@@ -760,9 +761,9 @@ type IProtocolPositionActionSubmitParams = {
   // thrown after it has already closed (e.g. tx-confirm init failures).
   isErrorToastSuppressed?: () => boolean;
   onBeforeNavigateConfirm?: () => void | Promise<void>;
-  // Fires after the confirming sheet resolves (Success / Failed / undefined
-  // when dismissed while still pending), before the hook-level onSuccess
-  // refresh. Dialog callers use it to run the post-action navigation rule.
+  // Fires after the tx-status observer resolves (Success / Failed / undefined
+  // when the receipt poll exhausts), before the hook-level onSuccess refresh.
+  // Dialog callers use it to run the post-action navigation rule.
   onSettleResult?: (result: {
     status: IDeFiActionTxConfirmDialogResult;
     data: ISendTxOnSuccessData[];
@@ -834,7 +835,11 @@ function useProtocolPositionActionSubmit({
       onSettleResult,
     }: IProtocolPositionActionSubmitParams) => {
       if (selectedAssets.length === 0) {
-        throw new OneKeyLocalError('DeFi action asset is missing');
+        throw new OneKeyLocalError(
+          intl.formatMessage({
+            id: ETranslations.defi_action_unavailable__msg,
+          }),
+        );
       }
 
       // The wire action for build-transaction; `action.action` keeps the
@@ -853,7 +858,11 @@ function useProtocolPositionActionSubmit({
         isMaxAmount,
       });
       if (percentageAction && !amountForApi && !bps) {
-        throw new OneKeyLocalError('Invalid DeFi action amount');
+        throw new OneKeyLocalError(
+          intl.formatMessage({
+            id: ETranslations.defi_action_invalid_amount__msg,
+          }),
+        );
       }
 
       // Lido withdraw goes through the permit two-step flow, and its build API
@@ -900,18 +909,36 @@ function useProtocolPositionActionSubmit({
 
           if (isLidoWithdraw) {
             if (!resp.permit) {
-              throw new OneKeyLocalError('DeFi permit response is missing');
+              throw new OneKeyLocalError(
+                intl.formatMessage({
+                  id: ETranslations.defi_action_unavailable__msg,
+                }),
+              );
             }
             const account = await backgroundApiProxy.serviceAccount.getAccount({
               accountId,
               networkId,
             });
-            defiPermitUtils.validateLidoWithdrawPermitTypedData({
-              message: resp.permit.message,
-              accountAddress: account.address,
-              networkId,
-              selectedAsset,
-            });
+            try {
+              defiPermitUtils.validateLidoWithdrawPermitTypedData({
+                message: resp.permit.message,
+                accountAddress: account.address,
+                networkId,
+                selectedAsset,
+              });
+            } catch (error) {
+              if (defiPermitUtils.isDeFiPermitValidationError(error)) {
+                defaultLogger.staking.page.permitSignError({
+                  error: getErrorMessage(error),
+                });
+                throw new OneKeyLocalError(
+                  intl.formatMessage({
+                    id: ETranslations.defi_action_unavailable__msg,
+                  }),
+                );
+              }
+              throw error;
+            }
             const unsignedMessage =
               typeof resp.permit.message === 'string'
                 ? resp.permit.message
@@ -944,7 +971,11 @@ function useProtocolPositionActionSubmit({
           }
 
           if (!resp.tx) {
-            throw new OneKeyLocalError('DeFi transaction is missing');
+            throw new OneKeyLocalError(
+              intl.formatMessage({
+                id: ETranslations.defi_action_unavailable__msg,
+              }),
+            );
           }
           const orderId = resp.orderId || generateUUID();
 
@@ -1011,7 +1042,7 @@ function useProtocolPositionActionSubmit({
                 data,
                 orderIdsByBusinessTxIndex,
               }).catch(logDeFiActionEarnOrderError);
-              // Block on the confirming sheet until the tx settles, then run
+              // Block on the tx-status observer until the tx settles, then run
               // the caller's refresh so the position reflects the result.
               const finalStatus = await showDeFiActionTxConfirmDialog({
                 accountId,
@@ -1025,7 +1056,7 @@ function useProtocolPositionActionSubmit({
               if (shouldContinueSuccess === false) {
                 return;
               }
-              if (finalStatus === EOnChainHistoryTxStatus.Failed) {
+              if (finalStatus !== EOnChainHistoryTxStatus.Success) {
                 return;
               }
               await onSuccess?.({ accountId, networkId, data });
@@ -1904,16 +1935,11 @@ function ProtocolPositionActionDialogContent({
     setSubmitError(undefined);
     setSubmitting(true);
     // Claim & co. have no amount to preserve and nothing left to act on after
-    // success — they always return to the page. The rule proper covers
-    // withdraw / repay / remove.
+    // settle. Withdraw / repay / remove use the shared settle rule below.
     const usesNavigationRule =
       action.action === EDeFiPositionAction.Withdraw ||
       action.action === EDeFiPositionAction.Repay ||
       action.action === EDeFiPositionAction.RemoveLiquidity;
-    const isMultiAsset = action.assets.length > 1;
-    const submittedIsFullClose = useManualAmountInput
-      ? isMaxAmount
-      : actionPercent >= 100;
     try {
       await submitProtocolPositionAction({
         action,
@@ -1932,18 +1958,10 @@ function ProtocolPositionActionDialogContent({
           }
           const navigationDecision = resolvePostActionNavigation({
             txStatus: status,
-            isFullClose: submittedIsFullClose,
-            isMultiAsset,
           });
           if (navigationDecision === 'closeToPage') {
             void closeRef.current?.();
             return;
-          }
-          if (navigationDecision === 'stayWithError') {
-            setSubmitError(
-              intl.formatMessage({ id: ETranslations.global_failed }),
-            );
-            return false;
           }
           await handleStayRefresh();
           return false;
@@ -2176,6 +2194,7 @@ function showProtocolPositionActionDialog({
   rewardAssets,
   onSuccess,
   refreshAction,
+  dialog,
 }: {
   accountId: string;
   networkId: string;
@@ -2189,8 +2208,10 @@ function showProtocolPositionActionDialog({
   refreshAction?: (
     staleAction: IResolvedDeFiPositionAction,
   ) => Promise<IResolvedDeFiPositionAction | undefined>;
+  dialog?: ReturnType<typeof useInPageDialog>;
 }) {
-  Dialog.show({
+  const DialogInstance = dialog ?? Dialog;
+  DialogInstance.show({
     showFooter: false,
     renderContent: (
       <ProtocolPositionActionDialogContent

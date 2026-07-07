@@ -7,6 +7,7 @@ import {
   resolveLendingStepState,
   resolvePostActionNavigation,
   resolveProtocolLendingRepayAmountState,
+  resolveVisibleLendingStepState,
 } from './protocolLendingActionUtils';
 
 describe('protocolLendingActionUtils', () => {
@@ -294,53 +295,54 @@ describe('resolveLendingStepState', () => {
   });
 });
 
+describe('resolveVisibleLendingStepState', () => {
+  it('keeps the submitted step visible while navigation blurs the route', () => {
+    expect(
+      resolveVisibleLendingStepState({
+        liveStepState: { kind: 'approveStep1' },
+        submitting: true,
+        submittedStepKind: 'actionStep2',
+      }),
+    ).toEqual({ kind: 'actionStep2' });
+  });
+
+  it('falls back to the live step outside an active submit', () => {
+    expect(
+      resolveVisibleLendingStepState({
+        liveStepState: { kind: 'approveStep1' },
+        submitting: false,
+        submittedStepKind: 'actionStep2',
+      }),
+    ).toEqual({ kind: 'approveStep1' });
+  });
+});
+
 describe('resolvePostActionNavigation', () => {
-  it('closes to page only on Success + full close + single asset', () => {
+  it('closes to page on Success regardless of amount shape', () => {
     expect(
       resolvePostActionNavigation({
         txStatus: EOnChainHistoryTxStatus.Success,
-        isFullClose: true,
-        isMultiAsset: false,
+      }),
+    ).toBe('closeToPage');
+    expect(
+      resolvePostActionNavigation({
+        txStatus: EOnChainHistoryTxStatus.Success,
       }),
     ).toBe('closeToPage');
   });
 
-  it('stays on Success when the modal is multi-asset', () => {
-    expect(
-      resolvePostActionNavigation({
-        txStatus: EOnChainHistoryTxStatus.Success,
-        isFullClose: true,
-        isMultiAsset: true,
-      }),
-    ).toBe('stayAndRefresh');
-  });
-
-  it('stays on Success partial close', () => {
-    expect(
-      resolvePostActionNavigation({
-        txStatus: EOnChainHistoryTxStatus.Success,
-        isFullClose: false,
-        isMultiAsset: false,
-      }),
-    ).toBe('stayAndRefresh');
-  });
-
-  it('failed tx stays with error regardless of amounts', () => {
+  it('closes to page on Failed because it is a final chain status', () => {
     expect(
       resolvePostActionNavigation({
         txStatus: EOnChainHistoryTxStatus.Failed,
-        isFullClose: true,
-        isMultiAsset: false,
       }),
-    ).toBe('stayWithError');
+    ).toBe('closeToPage');
   });
 
-  it('never closes on an unconfirmed tx (sheet dismissed while pending)', () => {
+  it('keeps the dialog only for an unconfirmed tx or exhausted poll', () => {
     expect(
       resolvePostActionNavigation({
         txStatus: undefined,
-        isFullClose: true,
-        isMultiAsset: false,
       }),
     ).toBe('stayAndRefresh');
   });
