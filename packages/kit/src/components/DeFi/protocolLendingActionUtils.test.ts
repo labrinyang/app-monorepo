@@ -1,7 +1,11 @@
+import { EOnChainHistoryTxStatus } from '@onekeyhq/shared/types/history';
+
 import {
   findSupportedBorrowMarket,
   resolveProtocolLendingDefiFillableAmountState,
   resolveProtocolLendingRemainingDebtState,
+  resolveLendingStepState,
+  resolvePostActionNavigation,
   resolveProtocolLendingRepayAmountState,
 } from './protocolLendingActionUtils';
 
@@ -245,5 +249,99 @@ describe('findSupportedBorrowMarket', () => {
         marketAddress: undefined,
       }),
     ).toBeUndefined();
+  });
+});
+
+describe('resolveLendingStepState', () => {
+  it('waiting allowance wins over every other state', () => {
+    expect(
+      resolveLendingStepState({
+        needsApproval: true,
+        waitingAllowance: true,
+        approveSessionActive: true,
+      }),
+    ).toEqual({ kind: 'waitingAllowance' });
+  });
+
+  it('needs approval shows step 1 even after an approve this session', () => {
+    expect(
+      resolveLendingStepState({
+        needsApproval: true,
+        waitingAllowance: false,
+        approveSessionActive: true,
+      }),
+    ).toEqual({ kind: 'approveStep1' });
+  });
+
+  it('after an approve session with allowance covered shows step 2', () => {
+    expect(
+      resolveLendingStepState({
+        needsApproval: false,
+        waitingAllowance: false,
+        approveSessionActive: true,
+      }),
+    ).toEqual({ kind: 'actionStep2' });
+  });
+
+  it('plain action when no approve was ever involved', () => {
+    expect(
+      resolveLendingStepState({
+        needsApproval: false,
+        waitingAllowance: false,
+        approveSessionActive: false,
+      }),
+    ).toEqual({ kind: 'action' });
+  });
+});
+
+describe('resolvePostActionNavigation', () => {
+  it('closes to page only on Success + full close + single asset', () => {
+    expect(
+      resolvePostActionNavigation({
+        txStatus: EOnChainHistoryTxStatus.Success,
+        isFullClose: true,
+        isMultiAsset: false,
+      }),
+    ).toBe('closeToPage');
+  });
+
+  it('stays on Success when the modal is multi-asset', () => {
+    expect(
+      resolvePostActionNavigation({
+        txStatus: EOnChainHistoryTxStatus.Success,
+        isFullClose: true,
+        isMultiAsset: true,
+      }),
+    ).toBe('stayAndRefresh');
+  });
+
+  it('stays on Success partial close', () => {
+    expect(
+      resolvePostActionNavigation({
+        txStatus: EOnChainHistoryTxStatus.Success,
+        isFullClose: false,
+        isMultiAsset: false,
+      }),
+    ).toBe('stayAndRefresh');
+  });
+
+  it('failed tx stays with error regardless of amounts', () => {
+    expect(
+      resolvePostActionNavigation({
+        txStatus: EOnChainHistoryTxStatus.Failed,
+        isFullClose: true,
+        isMultiAsset: false,
+      }),
+    ).toBe('stayWithError');
+  });
+
+  it('never closes on an unconfirmed tx (sheet dismissed while pending)', () => {
+    expect(
+      resolvePostActionNavigation({
+        txStatus: undefined,
+        isFullClose: true,
+        isMultiAsset: false,
+      }),
+    ).toBe('stayAndRefresh');
   });
 });

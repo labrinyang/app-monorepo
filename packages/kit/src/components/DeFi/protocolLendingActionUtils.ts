@@ -1,6 +1,7 @@
 import BigNumber from 'bignumber.js';
 
 import earnUtils from '@onekeyhq/shared/src/utils/earnUtils';
+import { EOnChainHistoryTxStatus } from '@onekeyhq/shared/types/history';
 import type { IBorrowMarketItem } from '@onekeyhq/shared/types/staking';
 
 function toNonNegativeAmountBN(value?: string) {
@@ -191,4 +192,51 @@ export function findSupportedBorrowMarket({
         address: market.marketAddress,
       }) === normalizedAddress,
   );
+}
+
+export type ILendingStepState =
+  | { kind: 'waitingAllowance' }
+  | { kind: 'approveStep1' }
+  | { kind: 'actionStep2' }
+  | { kind: 'action' };
+
+// Approve-step UI is derived, never stored: `needsApproval` is the live
+// allowance check, so raising the amount past the granted allowance naturally
+// falls back to step 1. `approveSessionActive` only decides whether the plain
+// action label gets the "Step 2 of 2" suffix.
+export function resolveLendingStepState({
+  needsApproval,
+  waitingAllowance,
+  approveSessionActive,
+}: {
+  needsApproval: boolean;
+  waitingAllowance: boolean;
+  approveSessionActive: boolean;
+}): ILendingStepState {
+  if (waitingAllowance) return { kind: 'waitingAllowance' };
+  if (needsApproval) return { kind: 'approveStep1' };
+  if (approveSessionActive) return { kind: 'actionStep2' };
+  return { kind: 'action' };
+}
+
+export type IPostActionNavigation =
+  | 'closeToPage'
+  | 'stayAndRefresh'
+  | 'stayWithError';
+
+// Post-settle navigation rule. `txStatus` undefined means the confirming
+// sheet was dismissed while the tx was still pending (or the receipt poll
+// exhausted) — an unconfirmed tx must never close to the page.
+export function resolvePostActionNavigation({
+  txStatus,
+  isFullClose,
+  isMultiAsset,
+}: {
+  txStatus: EOnChainHistoryTxStatus | undefined;
+  isFullClose: boolean;
+  isMultiAsset: boolean;
+}): IPostActionNavigation {
+  if (txStatus === EOnChainHistoryTxStatus.Failed) return 'stayWithError';
+  if (txStatus !== EOnChainHistoryTxStatus.Success) return 'stayAndRefresh';
+  return isFullClose && !isMultiAsset ? 'closeToPage' : 'stayAndRefresh';
 }
