@@ -5,7 +5,10 @@ import { useIntl } from 'react-intl';
 import { Toast } from '@onekeyhq/components';
 import type { IEncodedTx } from '@onekeyhq/core/src/types';
 import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
-import { showDeFiActionTxConfirmDialog } from '@onekeyhq/kit/src/components/DeFi/DeFiActionTxConfirmResult';
+import {
+  type IDeFiActionTxConfirmDialogResult,
+  showDeFiActionTxConfirmDialog,
+} from '@onekeyhq/kit/src/components/DeFi/DeFiActionTxConfirmResult';
 import { useSignatureConfirm } from '@onekeyhq/kit/src/hooks/useSignatureConfirm';
 import { OneKeyLocalError } from '@onekeyhq/shared/src/errors';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
@@ -102,6 +105,11 @@ type ITxConfirmResult =
       status: 'cancel';
     };
 
+type IBorrowSettleResult = {
+  status: IDeFiActionTxConfirmDialogResult;
+  data: ISendTxOnSuccessData[];
+};
+
 // React Navigation modal transitions take about 300ms on mobile. Waiting for
 // that animation to settle avoids racing the second repay confirm with the
 // closing setup modal.
@@ -151,6 +159,7 @@ const handleBorrowSuccess = async ({
   networkId,
   accountId,
   stakingInfo,
+  onSettleResult,
   onSuccess,
 }: {
   data: ISendTxOnSuccessData[];
@@ -158,6 +167,7 @@ const handleBorrowSuccess = async ({
   networkId: string;
   accountId?: string;
   stakingInfo?: IStakingInfo;
+  onSettleResult?: (result: IBorrowSettleResult) => void | Promise<void>;
   onSuccess?: IModalSendParamList['SendConfirm']['onSuccess'];
 }) => {
   const latestTxId =
@@ -194,6 +204,7 @@ const handleBorrowSuccess = async ({
       networkId,
       data,
     });
+    await onSettleResult?.({ status: finalStatus, data });
     if (finalStatus === EOnChainHistoryTxStatus.Failed) {
       return;
     }
@@ -220,6 +231,11 @@ type IBorrowBuildTxParams = {
   // Awaited right before navigationToTxConfirm so dialog callers can close
   // themselves at navigation time instead of before the build request.
   onBeforeNavigate?: () => void | Promise<void>;
+  // Fires after the confirming sheet resolves (Success / Failed / undefined
+  // when dismissed while still pending), before the legacy onSuccess. Only
+  // the sheet paths (Withdraw / Repay labels) ever call it. Failed still
+  // short-circuits onSuccess so success-only refreshes don't run.
+  onSettleResult?: (result: IBorrowSettleResult) => void | Promise<void>;
   onSuccess?: IModalSendParamList['SendConfirm']['onSuccess'];
   onFail?: IModalSendParamList['SendConfirm']['onFail'];
 };
@@ -302,6 +318,7 @@ export function useUniversalBorrowWithdraw({
       withdrawAll,
       stakingInfo,
       onBeforeNavigate,
+      onSettleResult,
       onSuccess,
       onFail,
     }: IBorrowBuildTxParams) => {
@@ -333,6 +350,7 @@ export function useUniversalBorrowWithdraw({
             networkId,
             accountId,
             stakingInfo: stakingInfoWithOrderId,
+            onSettleResult,
             onSuccess,
           });
         },
@@ -421,6 +439,7 @@ export function useUniversalBorrowRepay({
       repayAll,
       stakingInfo,
       onBeforeNavigate,
+      onSettleResult,
       onSuccess,
       onFail,
     }: IBorrowBuildTxParams) => {
@@ -452,6 +471,7 @@ export function useUniversalBorrowRepay({
             networkId,
             accountId,
             stakingInfo: stakingInfoWithOrderId,
+            onSettleResult,
             onSuccess,
           });
         },
