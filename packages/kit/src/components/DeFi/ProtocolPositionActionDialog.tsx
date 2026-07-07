@@ -48,7 +48,10 @@ import { EMessageTypesEth } from '@onekeyhq/shared/types/message';
 import { EEarnLabels } from '@onekeyhq/shared/types/staking';
 import type { ISendTxOnSuccessData } from '@onekeyhq/shared/types/tx';
 
-import { showDeFiActionTxConfirmDialog } from './DeFiActionTxConfirmResult';
+import {
+  type IDeFiActionTxConfirmDialogResult,
+  showDeFiActionTxConfirmDialog,
+} from './DeFiActionTxConfirmResult';
 import { resolveProtocolLendingDefiFillableAmountState } from './protocolLendingActionUtils';
 import {
   ProtocolValueCell,
@@ -754,6 +757,13 @@ type IProtocolPositionActionSubmitParams = {
   // thrown after it has already closed (e.g. tx-confirm init failures).
   isErrorToastSuppressed?: () => boolean;
   onBeforeNavigateConfirm?: () => void | Promise<void>;
+  // Fires after the confirming sheet resolves (Success / Failed / undefined
+  // when dismissed while still pending), before the hook-level onSuccess
+  // refresh. Dialog callers use it to run the post-action navigation rule.
+  onSettleResult?: (result: {
+    status: IDeFiActionTxConfirmDialogResult;
+    data: ISendTxOnSuccessData[];
+  }) => boolean | void | Promise<boolean | void>;
 };
 
 function buildDeFiActionExtraParams({
@@ -818,6 +828,7 @@ function useProtocolPositionActionSubmit({
       hasRewards,
       isErrorToastSuppressed,
       onBeforeNavigateConfirm,
+      onSettleResult,
     }: IProtocolPositionActionSubmitParams) => {
       if (selectedAssets.length === 0) {
         throw new OneKeyLocalError('DeFi action asset is missing');
@@ -1004,7 +1015,14 @@ function useProtocolPositionActionSubmit({
                 networkId,
                 data,
               });
-              if (finalStatus !== EOnChainHistoryTxStatus.Success) {
+              const shouldContinueSuccess = await onSettleResult?.({
+                status: finalStatus,
+                data,
+              });
+              if (shouldContinueSuccess === false) {
+                return;
+              }
+              if (finalStatus === EOnChainHistoryTxStatus.Failed) {
                 return;
               }
               await onSuccess?.({ accountId, networkId, data });
