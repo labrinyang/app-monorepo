@@ -12,7 +12,6 @@ import {
   SizableText,
   Skeleton,
   Stack,
-  Toast,
   XStack,
   YStack,
 } from '@onekeyhq/components';
@@ -53,10 +52,13 @@ import {
   type ICheckAmountAlert,
 } from '@onekeyhq/shared/types/staking';
 import type { IToken } from '@onekeyhq/shared/types/token';
+import type { ISendTxOnSuccessData } from '@onekeyhq/shared/types/tx';
 
 import {
   resolveProtocolLendingDefiFillableAmountState,
   resolveProtocolLendingRemainingDebtState,
+  resolveLendingStepState,
+  resolvePostActionNavigation,
   resolveProtocolLendingRepayAmountState,
 } from './protocolLendingActionUtils';
 import {
@@ -69,6 +71,8 @@ import {
   isUserRejectedErrorMessage,
   useProtocolPositionActionSubmit,
 } from './ProtocolPositionActionDialog';
+
+import type { IDeFiActionTxConfirmDialogResult } from './DeFiActionTxConfirmResult';
 
 // Withdraw/Repay only — the portfolio dialog is exit-side (Supply/Borrow stay on
 // the full manage page).
@@ -860,7 +864,11 @@ function ProtocolLendingActionBorrowContent({
 
   // Fixed mode (a desktop row already named the asset) skips the fetch — the
   // dropdown is only for the position-level entry.
-  const { result: assetsLoadState, isLoading: assetsLoading } =
+  const {
+    result: assetsLoadState,
+    isLoading: assetsLoading,
+    run: runAssetsList,
+  } =
     usePromiseResult<IBorrowAssetsListLoadState>(
       async () => {
         if (!source.selectable) {
@@ -917,6 +925,7 @@ function ProtocolLendingActionBorrowContent({
     tokenInfo,
     protocolInfo,
     isLoading: manageLoading,
+    run: runManagePage,
   } = useManagePage({
     accountId,
     indexedAccountId: source.indexedAccountId,
@@ -973,6 +982,15 @@ function ProtocolLendingActionBorrowContent({
   // Footer confirm loading is overridden by confirmButtonProps and released
   // early by preventClose(), so the dialog owns the build spinner and guard.
   const [submitting, setSubmitting] = useState(false);
+  // An approve was initiated this session — the only thing it controls is the
+  // "Step 2 of 2" suffix once needsApproval flips off.
+  const [approveSessionActive, setApproveSessionActive] = useState(false);
+  // Set while a post-action stay-refresh is waiting for fresh balances; the
+  // effect below reconciles the reserve selection once the list lands.
+  const stayRefreshPendingRef = useRef(false);
+  // Captured per-confirm in handleFooterConfirm; the settle callback closes the
+  // still-mounted dialog after a full-close single-asset tx.
+  const closeRef = useRef<(() => void | Promise<void>) | undefined>(undefined);
   const hasUserTouchedRef = useRef(false);
   const prefilledReserveRef = useRef<string | undefined>(undefined);
   // Show the body only after the first load settles; later reserve-switch
@@ -1007,6 +1025,22 @@ function ProtocolLendingActionBorrowContent({
   useEffect(() => {
     setSubmitError(undefined);
   }, [amount, reserveAddress]);
+
+  // After a stay-refresh the acted-on reserve may be gone: fall to the first
+  // remaining asset, or close to the page when the last position was closed.
+  useEffect(() => {
+    if (!stayRefreshPendingRef.current) return;
+    if (!source.selectable || assetsLoading) return;
+    stayRefreshPendingRef.current = false;
+    const freshAssets = assetsList.assets;
+    if (freshAssets.length === 0) {
+      void closeRef.current?.();
+      return;
+    }
+    if (!freshAssets.some((asset) => asset.reserveAddress === reserveAddress)) {
+      setReserveAddress(freshAssets[0].reserveAddress);
+    }
+  }, [assetsLoading, assetsList.assets, reserveAddress, source.selectable]);
 
   const amountBN = new BigNumber(amount || '0');
   const isAmountPositive = amountBN.isFinite() && amountBN.gt(0);
@@ -1141,6 +1175,7 @@ function ProtocolLendingActionBorrowContent({
   };
   const handleSelectAsset = (key: string) => {
     setReserveAddress(key);
+    setApproveSessionActive(false);
     hasUserTouchedRef.current = false;
     // Repay, and withdraw-with-debt (no prefill), reset to 0 on switch. Debt-free
     // withdraw leaves it for the prefill effect to refill once the reserve loads.
@@ -1210,12 +1245,10 @@ function ProtocolLendingActionBorrowContent({
     networkId,
   });
   const handleBorrowRepay = useUniversalBorrowRepay({ accountId, networkId });
-  const closeRef = useRef<(() => void | Promise<void>) | undefined>(undefined);
-  const isBorrowDialogClosedRef = useRef(false);
 
-  // The dialog stays open (confirm button spinning) while the server builds
-  // the tx; onBeforeNavigate closes it right as tx-confirm opens, so a build
-  // failure lands as an inline alert with the user's input intact.
+  // The dialog stays mounted through the confirm hop; the settle callback
+  // below decides whether it closes (full close, single asset) or stays with
+  // refreshed data. closeRef is captured per-confirm in handleFooterConfirm.
   const submitBorrowTx = useCallback(async () => {
     const { provider, marketAddress } = source;
     const tags: string[] = [
@@ -1230,6 +1263,39 @@ function ProtocolLendingActionBorrowContent({
     const protocolLabel = earnUtils.getEarnProviderName({
       providerName: source.providerDisplayName ?? provider,
     });
+    const isMultiAsset = source.selectable && assetsList.assets.length > 1;
+    const submittedIsFullClose = isFullClose;
+    const onSettleResult = async ({
+      status,
+    }: {
+      status: IDeFiActionTxConfirmDialogResult;
+      data: ISendTxOnSuccessData[];
+    }) => {
+      const navigationDecision = resolvePostActionNavigation({
+        txStatus: status,
+        isFullClose: submittedIsFullClose,
+        isMultiAsset,
+      });
+      if (navigationDecision === 'closeToPage') {
+        void closeRef.current?.();
+        return;
+      }
+      if (navigationDecision === 'stayWithError') {
+        setSubmitError(intl.formatMessage({ id: ETranslations.global_failed }));
+        return;
+      }
+      // stayAndRefresh: reset input, re-arm the withdraw prefill, and pull
+      // fresh balances (the bg memo would otherwise serve 1-minute-old data).
+      setApproveSessionActive(false);
+      setAmount('');
+      setIsMaxAmount(false);
+      hasUserTouchedRef.current = false;
+      prefilledReserveRef.current = undefined;
+      stayRefreshPendingRef.current = true;
+      await backgroundApiProxy.serviceStaking.clearBorrowAssetsListCache();
+      void runAssetsList();
+      void runManagePage();
+    };
     if (actionType === 'repay') {
       await handleBorrowRepay({
         amount,
@@ -1246,16 +1312,9 @@ function ProtocolLendingActionBorrowContent({
               tags,
             }
           : undefined,
+        onSettleResult,
         onSuccess: (data) => {
           void onSuccess?.({ accountId, networkId, data });
-        },
-        onBeforeNavigate: () => {
-          if (isBorrowDialogClosedRef.current) return;
-          isBorrowDialogClosedRef.current = true;
-          // Fire the close without awaiting it: Dialog.close resolves on a
-          // fixed 300ms teardown timer, which would sit serially between the
-          // build response and tx-confirm opening.
-          void closeRef.current?.();
         },
       });
       return;
@@ -1275,34 +1334,32 @@ function ProtocolLendingActionBorrowContent({
             tags,
           }
         : undefined,
+      onSettleResult,
       onSuccess: (data) => {
         void onSuccess?.({ accountId, networkId, data });
-      },
-      onBeforeNavigate: () => {
-        if (isBorrowDialogClosedRef.current) return;
-        isBorrowDialogClosedRef.current = true;
-        // Same as the repay call: don't serially pay Dialog.close's 300ms
-        // teardown timer before tx-confirm opens.
-        void closeRef.current?.();
       },
     });
   }, [
     accountId,
     actionType,
     amount,
+    assetsList.assets,
     effectiveToken,
     handleBorrowRepay,
     handleBorrowWithdraw,
+    intl,
     isFullClose,
     networkId,
     onSuccess,
     protocolInfo?.providerDetail.logoURI,
     protocolInfo?.stakeTag,
     reserveAddress,
+    runAssetsList,
+    runManagePage,
     source,
   ]);
 
-  const { needsApproval, approveLoading, onApprove } =
+  const { needsApproval, approveLoading, waitingAllowance, onApprove } =
     useBorrowApproveAndSubmit({
       approveTarget,
       // useTrackTokenAllowance never fetches on mount - seed it with the
@@ -1311,6 +1368,8 @@ function ProtocolLendingActionBorrowContent({
       currentAllowance: protocolInfo?.approve?.allowance,
       amountValue: amount,
       onSubmit: submitBorrowTx,
+      autoSubmitAfterApprove: false,
+      onAllowanceReady: () => setApproveSessionActive(true),
     });
 
   const handleFooterConfirm = async ({
@@ -1321,28 +1380,22 @@ function ProtocolLendingActionBorrowContent({
     preventClose: () => void;
   }) => {
     closeRef.current = close;
-    isBorrowDialogClosedRef.current = false;
-    // We own the close timing: onBeforeNavigate closes right before the
-    // tx-confirm page opens, and the approve hop keeps the dialog open until
-    // it auto-submits.
+    // We own the close timing: the dialog stays mounted through the confirm
+    // hop and the settle callback decides close-vs-stay after the tx lands.
     preventClose();
     if (submitting) return;
     setSubmitting(true);
     setSubmitError(undefined);
     try {
       if (needsApproval) {
+        setApproveSessionActive(true);
         await onApprove();
         return;
       }
       await submitBorrowTx();
     } catch (error) {
       if (!isUserRejectedErrorMessage({ error, intl })) {
-        const errorMessage = getErrorMessage(error);
-        if (isBorrowDialogClosedRef.current) {
-          Toast.error({ title: errorMessage });
-        } else {
-          setSubmitError(errorMessage);
-        }
+        setSubmitError(getErrorMessage(error));
       }
     } finally {
       setSubmitting(false);
@@ -1442,6 +1495,29 @@ function ProtocolLendingActionBorrowContent({
     hasLoadedOnceRef.current = true;
   }
   const isInitialLoading = !hasLoadedOnceRef.current;
+
+  const stepState = resolveLendingStepState({
+    needsApproval,
+    waitingAllowance,
+    approveSessionActive,
+  });
+  const stepOfLabel = (step: number) =>
+    intl.formatMessage(
+      { id: ETranslations.defi_lending_step_of_total },
+      { step, total: 2 },
+    );
+  let confirmText = actionLabel;
+  if (stepState.kind === 'waitingAllowance') {
+    confirmText = intl.formatMessage({
+      id: ETranslations.defi_lending_waiting_approval,
+    });
+  } else if (stepState.kind === 'approveStep1') {
+    confirmText = `${intl.formatMessage({
+      id: ETranslations.global_approve,
+    })} · ${stepOfLabel(1)}`;
+  } else if (stepState.kind === 'actionStep2') {
+    confirmText = `${actionLabel} · ${stepOfLabel(2)}`;
+  }
 
   return (
     <YStack gap="$5">
@@ -1603,17 +1679,22 @@ function ProtocolLendingActionBorrowContent({
           checkAmountAlerts={actionResult.checkAmountAlerts}
         />
       ) : null}
+      {stepState.kind === 'approveStep1' && !isInitialLoading ? (
+        <SizableText size="$bodySm" color="$textSubdued" textAlign="center">
+          {intl.formatMessage(
+            { id: ETranslations.defi_lending_approve_first__hint },
+            { symbol: effectiveSymbol },
+          )}
+        </SizableText>
+      ) : null}
+
       <Dialog.Footer
         showCancelButton={false}
         showConfirmButton
-        onConfirmText={
-          needsApproval
-            ? intl.formatMessage({ id: ETranslations.global_approve })
-            : actionLabel
-        }
+        onConfirmText={confirmText}
         onConfirm={handleFooterConfirm}
         confirmButtonProps={{
-          disabled: confirmDisabled,
+          disabled: confirmDisabled || waitingAllowance || isBusy,
           loading:
             approveLoading ||
             actionResult.checkAmountLoading ||
