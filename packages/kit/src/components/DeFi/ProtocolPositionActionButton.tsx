@@ -582,6 +582,52 @@ const ProtocolPositionActionButton = memo(
       () => defiActionUtils.positionHasDebts(position),
       [position],
     );
+    // Post-settle stay-refresh for the dialogs: run the established post-tx
+    // force refresh (it also schedules the indexer-lag retries and feeds the
+    // page via the event bus), then re-resolve THIS action from the fresh
+    // payload. The resolved-action key omits groupId, so same-category
+    // multi-pool protocols can collide — prefer the match sharing a token
+    // address with the stale action.
+    const refreshResolvedAction = useCallback(
+      async (staleAction: IResolvedDeFiPositionAction) => {
+        if (!accountId) return undefined;
+        const refreshed =
+          await backgroundApiProxy.serviceDeFi.refreshAccountDeFiPositionsAfterAction(
+            {
+              accountId,
+              networkId: protocol.networkId,
+            },
+          );
+        if (!refreshed) return undefined;
+        const staleKey = getResolvedActionKey(staleAction);
+        const staleTokenAddresses = new Set(
+          staleAction.assets.map((asset) => asset.tokenAddress ?? ''),
+        );
+        let fallbackMatch: IResolvedDeFiPositionAction | undefined;
+        for (const freshProtocol of refreshed.protocols) {
+          for (const freshPosition of freshProtocol.positions) {
+            const resolved = defiActionUtils.resolveDeFiPositionActions({
+              protocol: freshProtocol,
+              position: freshPosition,
+              supportedActions,
+            });
+            const scoped = scopeActionsToManageAsset(resolved, manageAsset);
+            const match = scoped.find(
+              (freshAction) => getResolvedActionKey(freshAction) === staleKey,
+            );
+            if (match) {
+              const overlaps = match.assets.some((asset) =>
+                staleTokenAddresses.has(asset.tokenAddress ?? ''),
+              );
+              if (overlaps) return match;
+              fallbackMatch = fallbackMatch ?? match;
+            }
+          }
+        }
+        return fallbackMatch;
+      },
+      [accountId, manageAsset, protocol.networkId, supportedActions],
+    );
     // Withdraw and Repay resolve to different reserves (collateral vs debt), so
     // each manage type gets its own params object.
     const withdrawManageParams = useMemo(
@@ -750,6 +796,7 @@ const ProtocolPositionActionButton = memo(
             source: { type: 'defi', action },
             hasDebts: positionHasDebts,
             onSuccess,
+            refreshAction: refreshResolvedAction,
           });
           return;
         }
@@ -764,6 +811,7 @@ const ProtocolPositionActionButton = memo(
           hasDebts: positionHasDebts,
           rewardAssets: defiActionUtils.getPositionRewardAssets(position),
           onSuccess,
+          refreshAction: refreshResolvedAction,
         });
       },
       [
@@ -774,6 +822,7 @@ const ProtocolPositionActionButton = memo(
         positionHasDebts,
         preferLendingDialog,
         protocol.networkId,
+        refreshResolvedAction,
         submitProtocolPositionAction,
       ],
     );
@@ -807,6 +856,7 @@ const ProtocolPositionActionButton = memo(
           },
           hasDebts: positionHasDebts,
           onSuccess,
+          refreshAction: refreshResolvedAction,
         });
       },
       [
@@ -817,6 +867,7 @@ const ProtocolPositionActionButton = memo(
         positionHasDebts,
         protocol.indexedAccountId,
         protocol.networkId,
+        refreshResolvedAction,
         repayManageParams,
         withdrawManageParams,
       ],
