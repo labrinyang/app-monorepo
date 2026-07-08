@@ -62,6 +62,7 @@ import {
   resolveProtocolLendingRemainingDebtState,
   resolveProtocolLendingRepayAmountState,
   resolveVisibleLendingStepState,
+  shouldAutoSubmitLendingStep2,
 } from './protocolLendingActionUtils';
 import {
   type IProtocolPositionActionSuccessParams,
@@ -1050,6 +1051,9 @@ function ProtocolLendingActionBorrowContent({
   // An approve was initiated this session — the only thing it controls is the
   // "Step 2 of 2" suffix once needsApproval flips off.
   const [approveSessionActive, setApproveSessionActive] = useState(false);
+  // Dedupes the step-2 auto-advance: set once step 2 auto-fires, reset on each
+  // new approve so a re-approve (e.g. amount raised past the allowance) re-arms.
+  const autoSubmittedRef = useRef(false);
   // Set while a post-action stay-refresh is waiting for fresh balances; the
   // effect below reconciles the reserve selection once the list lands.
   const stayRefreshPendingRef = useRef(false);
@@ -1434,6 +1438,31 @@ function ProtocolLendingActionBorrowContent({
     approveSessionActive,
   });
 
+  // Shared guarded runner for a confirm step (approve or the main submit): owns
+  // the dialog's submitting spinner + inline error and keeps the step label
+  // stable across the tx-confirm navigation hop. The manual footer tap and the
+  // auto-advance effect below both go through this, so submitBorrowTx's settle /
+  // keep-open handling is identical whether step 2 is tapped or auto-fired.
+  const runGuardedStep = useCallback(
+    async (runStep: () => Promise<void>) => {
+      if (submitting) return;
+      submittedStepKindRef.current = stepState.kind;
+      setSubmitting(true);
+      setSubmitError(undefined);
+      try {
+        await runStep();
+      } catch (error) {
+        if (!isUserRejectedErrorMessage({ error, intl })) {
+          setSubmitError(getErrorMessage(error));
+        }
+      } finally {
+        submittedStepKindRef.current = undefined;
+        setSubmitting(false);
+      }
+    },
+    [submitting, stepState.kind, intl],
+  );
+
   const handleFooterConfirm = async ({
     close,
     preventClose,
@@ -1446,25 +1475,35 @@ function ProtocolLendingActionBorrowContent({
     // hop and the settle callback decides close-vs-stay after the tx lands.
     preventClose();
     if (submitting) return;
-    submittedStepKindRef.current = stepState.kind;
-    setSubmitting(true);
-    setSubmitError(undefined);
-    try {
-      if (needsApproval) {
-        setApproveSessionActive(true);
-        await onApprove();
-        return;
-      }
-      await submitBorrowTx();
-    } catch (error) {
-      if (!isUserRejectedErrorMessage({ error, intl })) {
-        setSubmitError(getErrorMessage(error));
-      }
-    } finally {
-      submittedStepKindRef.current = undefined;
-      setSubmitting(false);
+    if (needsApproval) {
+      // New approve session: re-arm the auto-advance so step 2 fires once,
+      // automatically, after this approve confirms and the allowance lands.
+      autoSubmittedRef.current = false;
+      setApproveSessionActive(true);
+      await runGuardedStep(onApprove);
+      return;
     }
+    await runGuardedStep(submitBorrowTx);
   };
+
+  // Auto-advance to step 2: once the approve tx confirms and the allowance
+  // covers the amount (stepState → actionStep2), submit the borrow without a
+  // second tap — mirroring the Swap review auto-advance. The ref dedupes so it
+  // fires once per approve session; a user rejection leaves step 2 on screen for
+  // a manual retry via the footer button.
+  useEffect(() => {
+    if (
+      !shouldAutoSubmitLendingStep2({
+        stepKind: stepState.kind,
+        submitting,
+        alreadyAutoSubmitted: autoSubmittedRef.current,
+      })
+    ) {
+      return;
+    }
+    autoSubmittedRef.current = true;
+    void runGuardedStep(submitBorrowTx);
+  }, [stepState.kind, submitting, runGuardedStep, submitBorrowTx]);
 
   const actionLabel = getActionLabel({
     action: LENDING_ACTION_TO_DEFI_ACTION[actionType],

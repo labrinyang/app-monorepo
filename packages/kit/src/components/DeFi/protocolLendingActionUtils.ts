@@ -236,6 +236,23 @@ export function resolveVisibleLendingStepState({
   return liveStepState;
 }
 
+// Whether the borrow dialog should auto-fire step 2 (the main tx) without a
+// second tap: the approve settled and the allowance now covers the amount
+// (stepState is `actionStep2`), nothing is already in flight, and step 2 has
+// not already auto-fired for this approve session. Mirrors the Swap review
+// auto-advance, where a confirmed approve immediately triggers the next step.
+export function shouldAutoSubmitLendingStep2({
+  stepKind,
+  submitting,
+  alreadyAutoSubmitted,
+}: {
+  stepKind: ILendingStepState['kind'];
+  submitting: boolean;
+  alreadyAutoSubmitted: boolean;
+}): boolean {
+  return stepKind === 'actionStep2' && !submitting && !alreadyAutoSubmitted;
+}
+
 export type IPostActionNavigation = 'closeToPage' | 'stayAndRefresh';
 
 // Post-settle navigation rule. Final chain statuses are owned by the tx-status

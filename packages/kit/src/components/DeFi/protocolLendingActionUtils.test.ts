@@ -8,6 +8,7 @@ import {
   resolveProtocolLendingRemainingDebtState,
   resolveProtocolLendingRepayAmountState,
   resolveVisibleLendingStepState,
+  shouldAutoSubmitLendingStep2,
 } from './protocolLendingActionUtils';
 
 describe('protocolLendingActionUtils', () => {
@@ -314,6 +315,65 @@ describe('resolveVisibleLendingStepState', () => {
         submittedStepKind: 'actionStep2',
       }),
     ).toEqual({ kind: 'approveStep1' });
+  });
+});
+
+describe('shouldAutoSubmitLendingStep2', () => {
+  it('auto-fires step 2 once the approve settled and the allowance covers it', () => {
+    expect(
+      shouldAutoSubmitLendingStep2({
+        stepKind: 'actionStep2',
+        submitting: false,
+        alreadyAutoSubmitted: false,
+      }),
+    ).toBe(true);
+  });
+
+  it('does not auto-fire before the approve completes', () => {
+    expect(
+      shouldAutoSubmitLendingStep2({
+        stepKind: 'approveStep1',
+        submitting: false,
+        alreadyAutoSubmitted: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldAutoSubmitLendingStep2({
+        stepKind: 'waitingAllowance',
+        submitting: false,
+        alreadyAutoSubmitted: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('never auto-fires the plain single-step action (no approve involved)', () => {
+    expect(
+      shouldAutoSubmitLendingStep2({
+        stepKind: 'action',
+        submitting: false,
+        alreadyAutoSubmitted: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('does not re-fire while a submit is already in flight', () => {
+    expect(
+      shouldAutoSubmitLendingStep2({
+        stepKind: 'actionStep2',
+        submitting: true,
+        alreadyAutoSubmitted: false,
+      }),
+    ).toBe(false);
+  });
+
+  it('fires only once per approve session (dedupe)', () => {
+    expect(
+      shouldAutoSubmitLendingStep2({
+        stepKind: 'actionStep2',
+        submitting: false,
+        alreadyAutoSubmitted: true,
+      }),
+    ).toBe(false);
   });
 });
 
