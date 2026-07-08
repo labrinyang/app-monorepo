@@ -1045,6 +1045,11 @@ function ProtocolLendingActionBorrowContent({
   // Footer confirm loading is overridden by confirmButtonProps and released
   // early by preventClose(), so the dialog owns the build spinner and guard.
   const [submitting, setSubmitting] = useState(false);
+  // Synchronous single-submit mutex for runGuardedStep. `submitting` state is
+  // async, so the footer tap and the auto-advance effect can both read it false
+  // in the actionStep2 frame and fire the tx twice; this ref is set/read in the
+  // same tick, so whichever runs first blocks the other.
+  const submittingRef = useRef(false);
   const submittedStepKindRef = useRef<
     ReturnType<typeof resolveLendingStepState>['kind'] | undefined
   >(undefined);
@@ -1106,10 +1111,31 @@ function ProtocolLendingActionBorrowContent({
       void closeRef.current?.();
       return;
     }
-    if (!freshAssets.some((asset) => asset.reserveAddress === reserveAddress)) {
+    // Normalize both sides: the refreshed list may return a different address
+    // casing than the current reserveAddress, and a raw compare would miss the
+    // still-present reserve and needlessly reset to the first asset.
+    const normalizedReserve = normalizeBorrowReserveAddress({
+      networkId,
+      address: reserveAddress,
+    });
+    if (
+      !freshAssets.some(
+        (asset) =>
+          normalizeBorrowReserveAddress({
+            networkId,
+            address: asset.reserveAddress,
+          }) === normalizedReserve,
+      )
+    ) {
       setReserveAddress(freshAssets[0].reserveAddress);
     }
-  }, [assetsLoading, assetsList.assets, reserveAddress, source.selectable]);
+  }, [
+    assetsLoading,
+    assetsList.assets,
+    networkId,
+    reserveAddress,
+    source.selectable,
+  ]);
 
   const amountBN = new BigNumber(amount || '0');
   const isAmountPositive = amountBN.isFinite() && amountBN.gt(0);
@@ -1445,7 +1471,11 @@ function ProtocolLendingActionBorrowContent({
   // keep-open handling is identical whether step 2 is tapped or auto-fired.
   const runGuardedStep = useCallback(
     async (runStep: () => Promise<void>) => {
-      if (submitting) return;
+      // Read + set the mutex synchronously — a stale `submitting` closure can't
+      // stop a concurrent second submit (footer tap racing the auto-advance
+      // effect at actionStep2).
+      if (submittingRef.current) return;
+      submittingRef.current = true;
       submittedStepKindRef.current = stepState.kind;
       setSubmitting(true);
       setSubmitError(undefined);
@@ -1456,11 +1486,12 @@ function ProtocolLendingActionBorrowContent({
           setSubmitError(getErrorMessage(error));
         }
       } finally {
+        submittingRef.current = false;
         submittedStepKindRef.current = undefined;
         setSubmitting(false);
       }
     },
-    [submitting, stepState.kind, intl],
+    [stepState.kind, intl],
   );
 
   const handleFooterConfirm = async ({
