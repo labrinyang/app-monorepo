@@ -301,10 +301,12 @@ function LendingSelectorRowContent({ item }: { item: ILendingSelectorItem }) {
   );
 }
 
-// The asset row at the top of the dialog. In `selectable` mode it is the trigger
-// for a popover that lists every asset (supplied for withdraw, borrowed for
-// repay) — the semantics of Borrow's asset-select popover. Fixed mode renders
-// the plain row with no affordance.
+// The asset selector at the top of the dialog. In `selectable` mode it is a
+// compact pill (token + symbol + chevron) that triggers a popover listing every
+// asset (supplied for withdraw, borrowed for repay) — the semantics of Borrow's
+// asset-select popover. Fixed mode renders the same pill with no chevron and no
+// affordance. The per-asset balance is not repeated on the pill; it lives on the
+// "Available" row under the amount field.
 function LendingAssetSelectorRow({
   item,
   items,
@@ -320,11 +322,17 @@ function LendingAssetSelectorRow({
 }) {
   const intl = useIntl();
 
-  const rowInner = (
+  // Pill content: logo + symbol, plus a chevron when it opens the asset list.
+  // The chevron stays a size below the token so it reads as a quiet affordance
+  // rather than competing with the asset identity.
+  const pillInner = (
     <>
-      <LendingSelectorRowContent item={item} />
+      <Token size="sm" tokenImageUri={item.logoURI} bg="$bg" />
+      <SizableText size="$bodyMdMedium" numberOfLines={1} flexShrink={1}>
+        {item.symbol}
+      </SizableText>
       {selectable ? (
-        <Icon name="ChevronDownSmallOutline" color="$iconSubdued" size="$5" />
+        <Icon name="ChevronDownSmallOutline" color="$iconSubdued" size="$4.5" />
       ) : null}
     </>
   );
@@ -332,95 +340,104 @@ function LendingAssetSelectorRow({
   if (!selectable) {
     return (
       <XStack
+        alignSelf="center"
         alignItems="center"
         gap="$2"
-        px="$3"
+        px="$4"
         py="$2.5"
-        borderRadius="$3"
+        borderRadius="$full"
+        borderCurve="continuous"
         bg="$bgSubdued"
       >
-        {rowInner}
+        {pillInner}
       </XStack>
     );
   }
 
   return (
-    <Popover
-      title={intl.formatMessage({ id: ETranslations.token_selector_title })}
-      renderTrigger={
-        // ButtonFrame renders as a native <button> on web, so the asset picker
-        // is keyboard-focusable and Enter/Space opens it — a plain onPress
-        // XStack was mouse-only.
-        <ButtonFrame
-          alignItems="center"
-          justifyContent="flex-start"
-          gap="$2"
-          px="$3"
-          py="$2.5"
-          borderWidth={0}
-          borderRadius="$3"
-          bg="$bgSubdued"
-          hoverStyle={{ bg: '$bgHover' }}
-          pressStyle={{ bg: '$bgActive' }}
-          focusable
-          focusVisibleStyle={LENDING_SELECTOR_FOCUS_STYLE}
-        >
-          {rowInner}
-        </ButtonFrame>
-      }
-      renderContent={({ closePopover }) => (
-        <YStack p="$2">
-          <XStack px="$3" pb="$1">
-            <SizableText size="$bodySmMedium" color="$textSubdued">
-              {columnHeaderLabel}
-            </SizableText>
-          </XStack>
-          {items.map((selectorItem) => {
-            const isSelected = selectorItem.key === item.key;
-            // The current asset is a non-actionable state row (plain XStack);
-            // every other asset is a keyboard-focusable option button.
-            if (isSelected) {
+    // Wrap the popover so its trigger hugs the pill and centers on the dialog's
+    // vertical axis (aligning with the amount hero below). The Popover's internal
+    // Trigger frame is a full-width Stack carrying both the tap target and the
+    // popover anchor, so only a content-sized row parent keeps them on the pill.
+    <XStack alignSelf="center">
+      <Popover
+        title={intl.formatMessage({ id: ETranslations.token_selector_title })}
+        renderTrigger={
+          // ButtonFrame renders as a native <button> on web, so the asset
+          // picker is keyboard-focusable and Enter/Space opens it — a plain
+          // onPress XStack was mouse-only.
+          <ButtonFrame
+            alignItems="center"
+            justifyContent="flex-start"
+            gap="$2"
+            px="$4"
+            py="$2.5"
+            borderWidth={0}
+            borderRadius="$full"
+            borderCurve="continuous"
+            bg="$bgSubdued"
+            hoverStyle={{ bg: '$bgHover' }}
+            pressStyle={{ bg: '$bgActive' }}
+            focusable
+            focusVisibleStyle={LENDING_SELECTOR_FOCUS_STYLE}
+          >
+            {pillInner}
+          </ButtonFrame>
+        }
+        renderContent={({ closePopover }) => (
+          <YStack p="$2">
+            <XStack px="$3" pb="$1">
+              <SizableText size="$bodySmMedium" color="$textSubdued">
+                {columnHeaderLabel}
+              </SizableText>
+            </XStack>
+            {items.map((selectorItem) => {
+              const isSelected = selectorItem.key === item.key;
+              // The current asset is a non-actionable state row (plain XStack);
+              // every other asset is a keyboard-focusable option button.
+              if (isSelected) {
+                return (
+                  <XStack
+                    key={selectorItem.key}
+                    alignItems="center"
+                    gap="$2"
+                    px="$3"
+                    py="$2"
+                    borderRadius="$2"
+                    bg="$bgHover"
+                  >
+                    <LendingSelectorRowContent item={selectorItem} />
+                  </XStack>
+                );
+              }
               return (
-                <XStack
+                <ButtonFrame
                   key={selectorItem.key}
                   alignItems="center"
+                  justifyContent="flex-start"
                   gap="$2"
                   px="$3"
                   py="$2"
+                  borderWidth={0}
                   borderRadius="$2"
-                  bg="$bgHover"
+                  bg="$transparent"
+                  hoverStyle={{ bg: '$bgHover' }}
+                  pressStyle={{ bg: '$bgActive' }}
+                  focusable
+                  focusVisibleStyle={LENDING_SELECTOR_FOCUS_STYLE}
+                  onPress={() => {
+                    onSelect(selectorItem.key);
+                    closePopover();
+                  }}
                 >
                   <LendingSelectorRowContent item={selectorItem} />
-                </XStack>
+                </ButtonFrame>
               );
-            }
-            return (
-              <ButtonFrame
-                key={selectorItem.key}
-                alignItems="center"
-                justifyContent="flex-start"
-                gap="$2"
-                px="$3"
-                py="$2"
-                borderWidth={0}
-                borderRadius="$2"
-                bg="$transparent"
-                hoverStyle={{ bg: '$bgHover' }}
-                pressStyle={{ bg: '$bgActive' }}
-                focusable
-                focusVisibleStyle={LENDING_SELECTOR_FOCUS_STYLE}
-                onPress={() => {
-                  onSelect(selectorItem.key);
-                  closePopover();
-                }}
-              >
-                <LendingSelectorRowContent item={selectorItem} />
-              </ButtonFrame>
-            );
-          })}
-        </YStack>
-      )}
-    />
+            })}
+          </YStack>
+        )}
+      />
+    </XStack>
   );
 }
 
