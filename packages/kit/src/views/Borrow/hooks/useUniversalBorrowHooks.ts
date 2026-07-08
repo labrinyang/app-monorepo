@@ -242,8 +242,10 @@ type IBorrowBuildTxParams = {
   onBeforeNavigate?: () => void | Promise<void>;
   // Fires after the tx-status observer resolves (Success / Failed / undefined
   // when the receipt poll exhausts), before the legacy onSuccess. Only the
-  // sheet paths (Withdraw / Repay labels) ever call it. Failed still
-  // short-circuits onSuccess so success-only refreshes don't run.
+  // sheet paths (Withdraw / Repay labels) ever call it. Any non-Success final
+  // status (Failed, or an unconfirmed / undefined settle) short-circuits
+  // onSuccess so success-only refreshes don't run — this also holds for callers
+  // that pass no onSettleResult (e.g. the Aave ManagePosition page).
   onSettleResult?: (
     result: IBorrowSettleResult,
   ) => boolean | void | Promise<boolean | void>;
