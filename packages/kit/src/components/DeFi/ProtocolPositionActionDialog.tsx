@@ -54,8 +54,8 @@ import {
   showDeFiActionTxConfirmDialog,
 } from './DeFiActionTxConfirmResult';
 import {
-  resolveProtocolLendingDefiFillableAmountState,
   resolvePostActionNavigation,
+  resolveProtocolLendingDefiFillableAmountState,
 } from './protocolLendingActionUtils';
 import {
   ProtocolValueCell,
@@ -2178,7 +2178,8 @@ function ProtocolPositionActionDialogContent({
         onConfirm={handleConfirm}
         confirmButtonProps={{
           disabled: isConfirmDisabled || isRefreshingAction,
-          loading: submitting || isRefreshingAction || isRepayWalletBalancePending,
+          loading:
+            submitting || isRefreshingAction || isRepayWalletBalancePending,
         }}
       />
     </YStack>

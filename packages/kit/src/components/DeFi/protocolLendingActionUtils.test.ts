@@ -2,10 +2,10 @@ import { EOnChainHistoryTxStatus } from '@onekeyhq/shared/types/history';
 
 import {
   findSupportedBorrowMarket,
-  resolveProtocolLendingDefiFillableAmountState,
-  resolveProtocolLendingRemainingDebtState,
   resolveLendingStepState,
   resolvePostActionNavigation,
+  resolveProtocolLendingDefiFillableAmountState,
+  resolveProtocolLendingRemainingDebtState,
   resolveProtocolLendingRepayAmountState,
   resolveVisibleLendingStepState,
 } from './protocolLendingActionUtils';

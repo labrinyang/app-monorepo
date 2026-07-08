@@ -56,10 +56,10 @@ import type { IToken } from '@onekeyhq/shared/types/token';
 import type { ISendTxOnSuccessData } from '@onekeyhq/shared/types/tx';
 
 import {
-  resolveProtocolLendingDefiFillableAmountState,
-  resolveProtocolLendingRemainingDebtState,
   resolveLendingStepState,
   resolvePostActionNavigation,
+  resolveProtocolLendingDefiFillableAmountState,
+  resolveProtocolLendingRemainingDebtState,
   resolveProtocolLendingRepayAmountState,
   resolveVisibleLendingStepState,
 } from './protocolLendingActionUtils';
@@ -890,7 +890,8 @@ function ProtocolLendingActionDefiContent({
         onConfirm={handleConfirm}
         confirmButtonProps={{
           disabled: isConfirmDisabled || isRefreshingAction,
-          loading: submitting || isRefreshingAction || isRepayWalletBalancePending,
+          loading:
+            submitting || isRefreshingAction || isRepayWalletBalancePending,
         }}
       />
     </YStack>
@@ -930,43 +931,42 @@ function ProtocolLendingActionBorrowContent({
     result: assetsLoadState,
     isLoading: assetsLoading,
     run: runAssetsList,
-  } =
-    usePromiseResult<IBorrowAssetsListLoadState>(
-      async () => {
-        if (!source.selectable) {
-          return { assetsList: EMPTY_BORROW_ASSETS_LIST };
-        }
-        try {
-          const assetsList =
-            await backgroundApiProxy.serviceStaking.getBorrowAssetsList({
-              accountId,
-              networkId,
-              provider: source.provider,
-              marketAddress: source.marketAddress,
-              action: LENDING_ACTION_TO_BORROW_ACTION[actionType],
-            });
-          return { assetsList };
-        } catch (error) {
-          return {
-            assetsList: EMPTY_BORROW_ASSETS_LIST,
-            errorMessage: getErrorMessage(error),
-          };
-        }
-      },
-      [
-        accountId,
-        networkId,
-        actionType,
-        source.selectable,
-        source.provider,
-        source.marketAddress,
-      ],
-      {
-        initResult: { assetsList: EMPTY_BORROW_ASSETS_LIST },
-        watchLoading: true,
-        undefinedResultIfReRun: true,
-      },
-    );
+  } = usePromiseResult<IBorrowAssetsListLoadState>(
+    async () => {
+      if (!source.selectable) {
+        return { assetsList: EMPTY_BORROW_ASSETS_LIST };
+      }
+      try {
+        const assetsList =
+          await backgroundApiProxy.serviceStaking.getBorrowAssetsList({
+            accountId,
+            networkId,
+            provider: source.provider,
+            marketAddress: source.marketAddress,
+            action: LENDING_ACTION_TO_BORROW_ACTION[actionType],
+          });
+        return { assetsList };
+      } catch (error) {
+        return {
+          assetsList: EMPTY_BORROW_ASSETS_LIST,
+          errorMessage: getErrorMessage(error),
+        };
+      }
+    },
+    [
+      accountId,
+      networkId,
+      actionType,
+      source.selectable,
+      source.provider,
+      source.marketAddress,
+    ],
+    {
+      initResult: { assetsList: EMPTY_BORROW_ASSETS_LIST },
+      watchLoading: true,
+      undefinedResultIfReRun: true,
+    },
+  );
   const assetsList = assetsLoadState?.assetsList ?? EMPTY_BORROW_ASSETS_LIST;
   const assetsError = assetsLoadState?.errorMessage;
   const normalizedReserveAddress = normalizeBorrowReserveAddress({
