@@ -247,7 +247,7 @@ function EarnFixedRateTokensContent() {
       {isLoading && sortedAssets.length === 0 ? (
         <EarnFixedRateTokensSkeleton />
       ) : (
-        <Stack>
+        <Stack gap="$2">
           {sortedAssets.map((asset) => (
             <AvailableAssetItem
               key={asset.symbol}

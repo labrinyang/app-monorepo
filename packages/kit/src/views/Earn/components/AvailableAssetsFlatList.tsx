@@ -169,7 +169,7 @@ function AvailableAssetsFlatListComponent() {
   );
 
   return (
-    <YStack gap="$8">
+    <YStack gap="$10">
       {sections.map(({ type, title }) => {
         const assets = sectionAssetsByType[type] ?? [];
         const isLoading =
@@ -213,7 +213,9 @@ function AvailableAssetsFlatListComponent() {
                 pointerEvents="none"
               />
             </XStack>
-            <YStack>
+            {/* Rows carry a gap of their own so the home list breathes; the
+                standalone token pages keep the flush ListItem rhythm. */}
+            <YStack gap="$2">
               {assets.slice(0, MAX_INLINE_ASSETS).map((asset) => (
                 <AvailableAssetItem
                   key={`${type}-${asset.symbol}`}

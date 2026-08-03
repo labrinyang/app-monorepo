@@ -87,7 +87,7 @@ function EarnMobileHomeContentComponent({
         </YStack>
       </HeaderScrollGestureWrapper>
 
-      <YStack gap="$8">
+      <YStack gap="$10">
         <Recommended isActive={isActive} />
         <AvailableAssetsFlatList />
         <YStack px="$pagePadding" gap="$2">

@@ -232,7 +232,7 @@ function EarnAllProtocolsContent() {
       {isLoading && sortedProviders.length === 0 ? (
         <EarnAllProtocolsSkeleton />
       ) : (
-        <Stack>
+        <Stack gap="$2">
           {sortedProviders.map((provider) => (
             <ListItem
               key={provider.provider}

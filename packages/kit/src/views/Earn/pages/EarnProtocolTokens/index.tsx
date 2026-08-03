@@ -30,8 +30,8 @@ import { EAvailableAssetsTypeEnum } from '@onekeyhq/shared/types/earn';
 import { capitalizeString } from '../../../Staking/utils/utils';
 import { EarnAprSuffixText } from '../../components/EarnAprSuffixText';
 import { EarnMobileSortControl } from '../../components/EarnMobileSortControl';
-import { NetworkFilterControl } from '../../components/NetworkFilterControl';
 import { EarnPageContainer } from '../../components/EarnPageContainer';
+import { NetworkFilterControl } from '../../components/NetworkFilterControl';
 import { EarnProviderMirror } from '../../EarnProviderMirror';
 import { EarnNavigation } from '../../earnUtils';
 import { useEarnAllProtocols } from '../../hooks/useEarnAllProtocols';
@@ -253,7 +253,7 @@ function EarnProtocolTokensContent({ route }: { route: IRouteProps }) {
       (isLogoMapLoading === true && !allAssets) ? (
         <EarnProtocolTokensSkeleton />
       ) : (
-        <Stack>
+        <Stack gap="$2">
           {sortedTokens.map((row) => (
             <ListItem
               key={getRowKey(row)}
@@ -299,8 +299,8 @@ function EarnProtocolTokensContent({ route }: { route: IRouteProps }) {
                   fallbackUnit={row.item.provider.rewardUnit || 'APY'}
                   color={
                     row.item.aprInfo?.highlight
-                      ? row.item.aprInfo.highlight.color ?? '$textSuccess'
-                      : row.item.aprInfo?.normal?.color ?? '$text'
+                      ? (row.item.aprInfo.highlight.color ?? '$textSuccess')
+                      : (row.item.aprInfo?.normal?.color ?? '$text')
                   }
                 />
                 {row.item.tvl?.text ? (

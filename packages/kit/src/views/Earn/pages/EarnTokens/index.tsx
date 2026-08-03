@@ -181,11 +181,11 @@ function EarnTokensContent() {
       filteredAssets.toSorted((assetA, assetB) => {
         const valueA =
           sortKey === 'tvl'
-            ? symbolTvlMap.get(assetA.symbol.toLowerCase()) ?? 0
+            ? (symbolTvlMap.get(assetA.symbol.toLowerCase()) ?? 0)
             : getAssetAprSortValue(assetA);
         const valueB =
           sortKey === 'tvl'
-            ? symbolTvlMap.get(assetB.symbol.toLowerCase()) ?? 0
+            ? (symbolTvlMap.get(assetB.symbol.toLowerCase()) ?? 0)
             : getAssetAprSortValue(assetB);
         return sortDirection === 'asc' ? valueA - valueB : valueB - valueA;
       }),
@@ -322,7 +322,7 @@ function EarnTokensContent() {
       {isLoading && sortedAssets.length === 0 ? (
         <EarnTokensSkeleton />
       ) : (
-        <Stack>
+        <Stack gap="$2">
           {sortedAssets.map((asset) => (
             <AvailableAssetItem
               key={asset.symbol}

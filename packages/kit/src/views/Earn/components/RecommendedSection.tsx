@@ -685,9 +685,14 @@ export function RecommendedSection({
         disableHorizontalBleed={disableHorizontalBleed}
       >
         <YStack>
-          {visibleTokens.map((token) => (
-            <RecommendedListItem key={token.symbol} token={token} />
-          ))}
+          {/* Rows are gapped, not flush, to match the rest of the Earn lists.
+              The gap wraps only the rows so the show-more button keeps its own
+              pt as the sole spacing above it. */}
+          <YStack gap="$2">
+            {visibleTokens.map((token) => (
+              <RecommendedListItem key={token.symbol} token={token} />
+            ))}
+          </YStack>
           {showMoreButton}
         </YStack>
       </RecommendedSectionContainer>
