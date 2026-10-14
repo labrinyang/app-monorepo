@@ -1,0 +1,1610 @@
+{
+ "tokenLogos": {
+  "U": "https://uni.onekey-asset.com/server-service-indexer/evm--56/tokens/address-0xce24439f2d9c6a2289f741120fe202248b666666-1766111365772.png",
+  "USDT": "https://uni.onekey-asset.com/server-service-indexer/evm--56/tokens/address-0x55d398326f99059ff775485246999027b3197955-1720668660063.png",
+  "LISTA": "https://uni.onekey-asset.com/server-service-indexer/evm--56/tokens/address-0xfceb31a79f71ac9cbdcf853519c1b12d379edc46.png",
+  "USDe": "https://uni.onekey-asset.com/server-service-indexer/evm--1/tokens/address-0x4c9edd5852cd905f086c759e8383e09bff1e68b3-1750909859995.png",
+  "ETH": "https://uni.onekey-asset.com/server-service-indexer/evm--1/tokens/address--1751363512633.png",
+  "USDC": "https://uni.onekey-asset.com/server-service-indexer/evm--1/tokens/address-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48-1749190981666.png",
+  "PT-sUSDe": "https://uni.onekey-asset.com/server-service-indexer/evm--1/tokens/address-0x9d39a5de30e57443bff2a8307a4256c8797a3497.png",
+  "vbUSDC": "https://uni-test.onekey-asset.com/server-service-onchain/evm--747474/tokens/0x203a662b0bd271a6ed5a60edfbd04bfce608fd36.png",
+  "KAT": "https://coin-images.coingecko.com/coins/images/70225/large/katana-social-icon.png?1761121098"
+ },
+ "protocolLogos": {
+  "bitway": "https://uni.onekey-asset.com/static/logo/bitway.png",
+  "lista": "https://uni.onekey-asset.com/static/logo/lista.png",
+  "ethena": "https://uni.onekey-asset.com/static/logo/ethena.png",
+  "lido": "https://uni.onekey-asset.com/static/logo/Lido.png",
+  "morpho": "https://uni.onekey-asset.com/static/logo/morpho.png",
+  "pendle": "https://uni.onekey-asset.com/static/logo/pendle.png",
+  "spark": "https://uni-test.onekey-asset.com/static/logo/spark.png"
+ },
+ "response": {
+  "positions": {
+   "evm--1": [
+    {
+     "networkId": "evm--1",
+     "owner": "0x92bAA173828d55B2F1ed611352Aa0627AB825178",
+     "protocol": "spark",
+     "protocolName": "Spark",
+     "chain": "evm",
+     "category": "yield",
+     "debts": [],
+     "metrics": {
+      "healthFactor": null
+     },
+     "source": {
+      "provider": "onekey-earn",
+      "fetchedAt": "2026-10-14T08:10:04.572Z",
+      "ttl": 60000,
+      "cached": false
+     },
+     "name": "Spark Savings USDC",
+     "groupId": "spark:evm--1:USDC:0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d",
+     "assets": [
+      {
+       "symbol": "USDC",
+       "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+       "amount": "20.217347",
+       "value": 20.212980053048,
+       "price": 0.999784,
+       "category": "deposit",
+       "meta": {
+        "decimals": 6,
+        "logoUrl": "https://uni.onekey-asset.com/server-service-indexer/evm--1/tokens/address-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48-1749190981666.png",
+        "isVerified": true
+       }
+      }
+     ],
+     "rewards": [],
+     "earn": {
+      "manage": {
+       "networkId": "evm--1",
+       "provider": "spark",
+       "symbol": "USDC",
+       "vault": "0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d"
+      },
+      "symbol": "USDC",
+      "vault": "0x28b3a8fb53b741a8fd78c0fb9a6b2393d896a43d",
+      "vaultName": "Spark Savings USDC",
+      "protocolCategory": "simpleEarn",
+      "protocolType": "lending",
+      "providerLogoURI": "https://uni-test.onekey-asset.com/static/logo/spark.png",
+      "network": {
+       "networkId": "evm--1",
+       "name": "Ethereum",
+       "logoURI": "https://uni-test.onekey-asset.com/dashboard/logo/upload_1767514119297.0.6765057733773634.0.png"
+      },
+      "investment": {
+       "totalFiatValue": "20.212980053048",
+       "totalFiatValueUsd": "20.212980053048",
+       "earnings24hFiatValue": "0.01300216031483132274",
+       "deposit": {
+        "title": {
+         "text": "20.2173 USDC"
+        },
+        "description": {
+         "text": "($20.21)",
+         "size": "$bodyMdMedium"
+        }
+       },
+       "earnings24h": {
+        "title": {
+         "text": "+$0.01",
+         "color": "$textSuccess"
+        }
+       },
+       "assetsStatus": [
+        {
+         "kind": "active",
+         "amount": "20.217347",
+         "fiatValue": "20.212980053048",
+         "title": {
+          "text": "20.2173 USDC"
+         },
+         "description": {
+          "text": "Active"
+         }
+        },
+        {
+         "kind": "effectiveDeposit",
+         "amount": "20.084838",
+         "fiatValue": "20.080499674992",
+         "title": {
+          "text": "20.0848 USDC"
+         },
+         "description": {
+          "text": "Effective deposits"
+         },
+         "tooltip": {
+          "type": "text",
+          "data": {
+           "title": {
+            "text": "Effective deposits"
+           },
+           "description": {
+            "text": "Funds you deposited through the OneKey App. Only these earn the platform bonus. Funds deposited elsewhere earn the base APY."
+           }
+          }
+         }
+        }
+       ],
+       "buttons": [
+        {
+         "type": "manage",
+         "text": {
+          "text": "Manage"
+         },
+         "disabled": false
+        }
+       ]
+      },
+      "action": "manage",
+      "effectiveDeposit": {
+       "amount": "20.084838",
+       "symbol": "USDC",
+       "fiatValue": "20.080499674992",
+       "label": {
+        "text": "Effective deposits"
+       },
+       "tooltip": {
+        "type": "text",
+        "data": {
+         "title": {
+          "text": "Effective deposits"
+         },
+         "description": {
+          "text": "Funds you deposited through the OneKey App. Only these earn the platform bonus. Funds deposited elsewhere earn the base APY."
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "networkId": "evm--1",
+     "owner": "0x92bAA173828d55B2F1ed611352Aa0627AB825178",
+     "protocol": "spark",
+     "protocolName": "Spark",
+     "chain": "evm",
+     "category": "yield",
+     "debts": [],
+     "metrics": {
+      "healthFactor": null
+     },
+     "source": {
+      "provider": "onekey-earn",
+      "fetchedAt": "2026-10-14T08:10:04.572Z",
+      "ttl": 60000,
+      "cached": false
+     },
+     "name": "Spark Savings USDT",
+     "groupId": "spark:evm--1:USDT:0xe2e7a17dff93280dec073c995595155283e3c372",
+     "assets": [
+      {
+       "symbol": "USDT",
+       "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+       "amount": "0.940931",
+       "value": 0.94022530175,
+       "price": 0.99925,
+       "category": "deposit",
+       "meta": {
+        "decimals": 6,
+        "logoUrl": "https://uni.onekey-asset.com/server-service-indexer/evm--1/tokens/address-0xdac17f958d2ee523a2206206994597c13d831ec7-1722246302921.png",
+        "isVerified": true
+       }
+      }
+     ],
+     "rewards": [],
+     "earn": {
+      "manage": {
+       "networkId": "evm--1",
+       "provider": "spark",
+       "symbol": "USDT",
+       "vault": "0xe2e7a17dff93280dec073c995595155283e3c372"
+      },
+      "symbol": "USDT",
+      "vault": "0xe2e7a17dff93280dec073c995595155283e3c372",
+      "vaultName": "Spark Savings USDT",
+      "protocolCategory": "simpleEarn",
+      "protocolType": "lending",
+      "providerLogoURI": "https://uni-test.onekey-asset.com/static/logo/spark.png",
+      "network": {
+       "networkId": "evm--1",
+       "name": "Ethereum",
+       "logoURI": "https://uni-test.onekey-asset.com/dashboard/logo/upload_1767514119297.0.6765057733773634.0.png"
+      },
+      "investment": {
+       "totalFiatValue": "0.94022530175",
+       "totalFiatValueUsd": "0.94022530175",
+       "earnings24hFiatValue": "0.00060696051157491439",
+       "deposit": {
+        "title": {
+         "text": "0.9409 USDT"
+        },
+        "description": {
+         "text": "($0.94)",
+         "size": "$bodyMdMedium"
+        }
+       },
+       "earnings24h": {
+        "title": {
+         "text": "< $0.01",
+         "color": "$textSuccess"
+        }
+       },
+       "assetsStatus": [
+        {
+         "kind": "active",
+         "amount": "0.940931",
+         "fiatValue": "0.94022530175",
+         "title": {
+          "text": "0.9409 USDT"
+         },
+         "description": {
+          "text": "Active"
+         }
+        },
+        {
+         "kind": "effectiveDeposit",
+         "amount": "0.940931",
+         "fiatValue": "0.94022530175",
+         "title": {
+          "text": "0.9409 USDT"
+         },
+         "description": {
+          "text": "Effective deposits"
+         },
+         "tooltip": {
+          "type": "text",
+          "data": {
+           "title": {
+            "text": "Effective deposits"
+           },
+           "description": {
+            "text": "Funds you deposited through the OneKey App. Only these earn the platform bonus. Funds deposited elsewhere earn the base APY."
+           }
+          }
+         }
+        }
+       ],
+       "buttons": [
+        {
+         "type": "manage",
+         "text": {
+          "text": "Manage"
+         },
+         "disabled": false
+        }
+       ]
+      },
+      "action": "manage",
+      "effectiveDeposit": {
+       "amount": "0.940931",
+       "symbol": "USDT",
+       "fiatValue": "0.94022530175",
+       "label": {
+        "text": "Effective deposits"
+       },
+       "tooltip": {
+        "type": "text",
+        "data": {
+         "title": {
+          "text": "Effective deposits"
+         },
+         "description": {
+          "text": "Funds you deposited through the OneKey App. Only these earn the platform bonus. Funds deposited elsewhere earn the base APY."
+         }
+        }
+       }
+      }
+     }
+    }
+   ],
+   "evm--56": [
+    {
+     "networkId": "evm--56",
+     "owner": "0x92bAA173828d55B2F1ed611352Aa0627AB825178",
+     "protocol": "bitway",
+     "protocolName": "Bitway",
+     "chain": "evm",
+     "category": "yield",
+     "debts": [],
+     "metrics": {
+      "healthFactor": null
+     },
+     "source": {
+      "provider": "onekey-earn",
+      "fetchedAt": "2026-10-14T08:09:30.258Z",
+      "ttl": 60000,
+      "cached": false
+     },
+     "name": "Bitway Absolute Return(U)",
+     "groupId": "bitway:evm--56:U:0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1",
+     "assets": [
+      {
+       "symbol": "U",
+       "address": "0xce24439f2d9c6a2289f741120fe202248b666666",
+       "amount": "4.058924238669808428",
+       "value": 4.055340208567063,
+       "price": 0.999117,
+       "category": "deposit",
+       "meta": {
+        "decimals": 18,
+        "logoUrl": "https://uni.onekey-asset.com/server-service-indexer/evm--56/tokens/address-0xce24439f2d9c6a2289f741120fe202248b666666-1766111365772.png",
+        "isVerified": true
+       }
+      }
+     ],
+     "rewards": [
+      {
+       "symbol": "U",
+       "address": "0xce24439f2d9c6a2289f741120fe202248b666666",
+       "amount": "0.002890724334680202",
+       "value": 0.002888171825092679,
+       "price": 0.999117,
+       "category": "reward",
+       "meta": {
+        "decimals": 18,
+        "logoUrl": "https://uni.onekey-asset.com/server-service-indexer/evm--56/tokens/address-0xce24439f2d9c6a2289f741120fe202248b666666-1766111365772.png",
+        "isVerified": true
+       },
+       "status": "pending",
+       "tooltip": {
+        "type": "text",
+        "data": {
+         "title": {
+          "text": "Yield info"
+         },
+         "description": {
+          "text": "Rewards cannot be claimed separately and are settled together when the assets are redeemed"
+         }
+        }
+       }
+      }
+     ],
+     "earn": {
+      "manage": {
+       "networkId": "evm--56",
+       "provider": "bitway",
+       "symbol": "U",
+       "vault": "0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1"
+      },
+      "symbol": "U",
+      "vault": "0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1",
+      "vaultName": "Bitway Absolute Return(U)",
+      "protocolCategory": "simpleEarn",
+      "protocolType": "liquid",
+      "providerLogoURI": "https://uni.onekey-asset.com/static/logo/bitway.png",
+      "network": {
+       "networkId": "evm--56",
+       "name": "BNB Chain",
+       "logoURI": "https://uni.onekey-asset.com/static/chain/bsc.png"
+      },
+      "investment": {
+       "totalFiatValue": "7.06343678903344763287",
+       "totalFiatValueUsd": "7.06343678903344763287",
+       "earnings24hFiatValue": "0.00055552605596809082",
+       "deposit": {
+        "title": {
+         "text": "7.0697 U"
+        },
+        "description": {
+         "text": "($7.06)",
+         "size": "$bodyMdMedium"
+        }
+       },
+       "earnings24h": {
+        "title": {
+         "text": "< $0.01",
+         "color": "$textSuccess"
+        }
+       },
+       "totalReward": {
+        "title": {
+         "text": "Total"
+        },
+        "description": {
+         "text": "+0.02831 U"
+        }
+       },
+       "assetsStatus": [
+        {
+         "kind": "active",
+         "amount": "4.058924238669808428",
+         "fiatValue": "4.055340208567062987158076",
+         "title": {
+          "text": "4.0589 U"
+         },
+         "description": {
+          "text": "Active"
+         }
+        },
+        {
+         "kind": "unstaking",
+         "amount": "0.5",
+         "fiatValue": "0.4995585",
+         "unlockSchedule": [
+          {
+           "amount": "0.5",
+           "fiatValue": "0.4995585",
+           "unlockAt": 1792120670000
+          }
+         ],
+         "title": {
+          "text": "0.5 U"
+         },
+         "description": {
+          "text": "Withdrawing"
+         },
+         "tooltip": {
+          "type": "withdraw",
+          "data": {
+           "title": {
+            "text": "Withdrawing"
+           },
+           "description": {
+            "text": "After the above time period, then your deposited assets will be available to claim."
+           },
+           "items": [
+            {
+             "title": {
+              "text": "0.5 U"
+             },
+             "description": {
+              "text": "2 days left"
+             }
+            }
+           ]
+          }
+         }
+        },
+        {
+         "kind": "pendingReward",
+         "amount": "0.002890724334680202",
+         "fiatValue": "0.002888171825092679381634",
+         "title": {
+          "text": "0.002891 U"
+         },
+         "description": {
+          "text": "Rewards"
+         },
+         "tooltip": {
+          "type": "text",
+          "data": {
+           "title": {
+            "text": "Yield info"
+           },
+           "description": {
+            "text": "Rewards cannot be claimed separately and are settled together when the assets are redeemed"
+           }
+          }
+         }
+        }
+       ],
+       "rewardAssets": [
+        {
+         "kind": "claimablePrincipal",
+         "amount": "2.507864352864871648",
+         "fiatValue": "2.505649908641291966334816",
+         "title": {
+          "text": "2.5079 U"
+         },
+         "description": {
+          "text": "($2.51)"
+         },
+         "button": {
+          "type": "claimOrder",
+          "disabled": false,
+          "text": {
+           "text": "Claim"
+          }
+         }
+        }
+       ],
+       "buttons": [
+        {
+         "type": "manage",
+         "text": {
+          "text": "Manage"
+         },
+         "disabled": false
+        }
+       ]
+      },
+      "action": "manage"
+     }
+    },
+    {
+     "networkId": "evm--56",
+     "owner": "0x92bAA173828d55B2F1ed611352Aa0627AB825178",
+     "protocol": "bitway",
+     "protocolName": "Bitway",
+     "chain": "evm",
+     "category": "yield",
+     "debts": [],
+     "metrics": {
+      "healthFactor": null
+     },
+     "source": {
+      "provider": "onekey-earn",
+      "fetchedAt": "2026-10-14T08:09:30.258Z",
+      "ttl": 60000,
+      "cached": false
+     },
+     "name": "Bitway Absolute Return(U)",
+     "groupId": "bitway:evm--56:U:0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1:claimable",
+     "assets": [
+      {
+       "symbol": "U",
+       "address": "0xce24439f2d9c6a2289f741120fe202248b666666",
+       "amount": "2.507864352864871648",
+       "value": 2.505649908641292,
+       "price": 0.999117,
+       "category": "claimable",
+       "meta": {
+        "decimals": 18,
+        "logoUrl": "https://uni.onekey-asset.com/server-service-indexer/evm--56/tokens/address-0xce24439f2d9c6a2289f741120fe202248b666666-1766111365772.png",
+        "isVerified": true
+       }
+      }
+     ],
+     "rewards": [],
+     "earn": {
+      "manage": {
+       "networkId": "evm--56",
+       "provider": "bitway",
+       "symbol": "U",
+       "vault": "0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1"
+      },
+      "symbol": "U",
+      "vault": "0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1",
+      "vaultName": "Bitway Absolute Return(U)",
+      "protocolCategory": "simpleEarn",
+      "protocolType": "liquid",
+      "providerLogoURI": "https://uni.onekey-asset.com/static/logo/bitway.png",
+      "network": {
+       "networkId": "evm--56",
+       "name": "BNB Chain",
+       "logoURI": "https://uni.onekey-asset.com/static/chain/bsc.png"
+      },
+      "investment": {
+       "totalFiatValue": "7.06343678903344763287",
+       "totalFiatValueUsd": "7.06343678903344763287",
+       "earnings24hFiatValue": "0.00055552605596809082",
+       "deposit": {
+        "title": {
+         "text": "7.0697 U"
+        },
+        "description": {
+         "text": "($7.06)",
+         "size": "$bodyMdMedium"
+        }
+       },
+       "earnings24h": {
+        "title": {
+         "text": "< $0.01",
+         "color": "$textSuccess"
+        }
+       },
+       "totalReward": {
+        "title": {
+         "text": "Total"
+        },
+        "description": {
+         "text": "+0.02831 U"
+        }
+       },
+       "assetsStatus": [
+        {
+         "kind": "active",
+         "amount": "4.058924238669808428",
+         "fiatValue": "4.055340208567062987158076",
+         "title": {
+          "text": "4.0589 U"
+         },
+         "description": {
+          "text": "Active"
+         }
+        },
+        {
+         "kind": "unstaking",
+         "amount": "0.5",
+         "fiatValue": "0.4995585",
+         "unlockSchedule": [
+          {
+           "amount": "0.5",
+           "fiatValue": "0.4995585",
+           "unlockAt": 1792120670000
+          }
+         ],
+         "title": {
+          "text": "0.5 U"
+         },
+         "description": {
+          "text": "Withdrawing"
+         },
+         "tooltip": {
+          "type": "withdraw",
+          "data": {
+           "title": {
+            "text": "Withdrawing"
+           },
+           "description": {
+            "text": "After the above time period, then your deposited assets will be available to claim."
+           },
+           "items": [
+            {
+             "title": {
+              "text": "0.5 U"
+             },
+             "description": {
+              "text": "2 days left"
+             }
+            }
+           ]
+          }
+         }
+        },
+        {
+         "kind": "pendingReward",
+         "amount": "0.002890724334680202",
+         "fiatValue": "0.002888171825092679381634",
+         "title": {
+          "text": "0.002891 U"
+         },
+         "description": {
+          "text": "Rewards"
+         },
+         "tooltip": {
+          "type": "text",
+          "data": {
+           "title": {
+            "text": "Yield info"
+           },
+           "description": {
+            "text": "Rewards cannot be claimed separately and are settled together when the assets are redeemed"
+           }
+          }
+         }
+        }
+       ],
+       "rewardAssets": [
+        {
+         "kind": "claimablePrincipal",
+         "amount": "2.507864352864871648",
+         "fiatValue": "2.505649908641291966334816",
+         "title": {
+          "text": "2.5079 U"
+         },
+         "description": {
+          "text": "($2.51)"
+         },
+         "button": {
+          "type": "claimOrder",
+          "disabled": false,
+          "text": {
+           "text": "Claim"
+          }
+         }
+        }
+       ],
+       "buttons": [
+        {
+         "type": "manage",
+         "text": {
+          "text": "Manage"
+         },
+         "disabled": false
+        }
+       ]
+      },
+      "action": "claim",
+      "claim": {
+       "type": "claimOrder",
+       "disabled": false,
+       "text": {
+        "text": "Claim"
+       }
+      },
+      "claimSource": "investment"
+     }
+    },
+    {
+     "networkId": "evm--56",
+     "owner": "0x92bAA173828d55B2F1ed611352Aa0627AB825178",
+     "protocol": "bitway",
+     "protocolName": "Bitway",
+     "chain": "evm",
+     "category": "yield",
+     "debts": [],
+     "metrics": {
+      "healthFactor": null
+     },
+     "source": {
+      "provider": "onekey-earn",
+      "fetchedAt": "2026-10-14T08:09:30.258Z",
+      "ttl": 60000,
+      "cached": false
+     },
+     "name": "Bitway Absolute Return(U)",
+     "groupId": "bitway:evm--56:U:0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1:unstaking:0",
+     "assets": [
+      {
+       "symbol": "U",
+       "address": "0xce24439f2d9c6a2289f741120fe202248b666666",
+       "amount": "0.5",
+       "value": 0.4995585,
+       "price": 0.999117,
+       "category": "unstaking",
+       "meta": {
+        "decimals": 18,
+        "logoUrl": "https://uni.onekey-asset.com/server-service-indexer/evm--56/tokens/address-0xce24439f2d9c6a2289f741120fe202248b666666-1766111365772.png",
+        "isVerified": true
+       }
+      }
+     ],
+     "rewards": [],
+     "earn": {
+      "manage": {
+       "networkId": "evm--56",
+       "provider": "bitway",
+       "symbol": "U",
+       "vault": "0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1"
+      },
+      "symbol": "U",
+      "vault": "0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1",
+      "vaultName": "Bitway Absolute Return(U)",
+      "protocolCategory": "simpleEarn",
+      "protocolType": "liquid",
+      "providerLogoURI": "https://uni.onekey-asset.com/static/logo/bitway.png",
+      "network": {
+       "networkId": "evm--56",
+       "name": "BNB Chain",
+       "logoURI": "https://uni.onekey-asset.com/static/chain/bsc.png"
+      },
+      "investment": {
+       "totalFiatValue": "7.06343678903344763287",
+       "totalFiatValueUsd": "7.06343678903344763287",
+       "earnings24hFiatValue": "0.00055552605596809082",
+       "deposit": {
+        "title": {
+         "text": "7.0697 U"
+        },
+        "description": {
+         "text": "($7.06)",
+         "size": "$bodyMdMedium"
+        }
+       },
+       "earnings24h": {
+        "title": {
+         "text": "< $0.01",
+         "color": "$textSuccess"
+        }
+       },
+       "totalReward": {
+        "title": {
+         "text": "Total"
+        },
+        "description": {
+         "text": "+0.02831 U"
+        }
+       },
+       "assetsStatus": [
+        {
+         "kind": "active",
+         "amount": "4.058924238669808428",
+         "fiatValue": "4.055340208567062987158076",
+         "title": {
+          "text": "4.0589 U"
+         },
+         "description": {
+          "text": "Active"
+         }
+        },
+        {
+         "kind": "unstaking",
+         "amount": "0.5",
+         "fiatValue": "0.4995585",
+         "unlockSchedule": [
+          {
+           "amount": "0.5",
+           "fiatValue": "0.4995585",
+           "unlockAt": 1792120670000
+          }
+         ],
+         "title": {
+          "text": "0.5 U"
+         },
+         "description": {
+          "text": "Withdrawing"
+         },
+         "tooltip": {
+          "type": "withdraw",
+          "data": {
+           "title": {
+            "text": "Withdrawing"
+           },
+           "description": {
+            "text": "After the above time period, then your deposited assets will be available to claim."
+           },
+           "items": [
+            {
+             "title": {
+              "text": "0.5 U"
+             },
+             "description": {
+              "text": "2 days left"
+             }
+            }
+           ]
+          }
+         }
+        },
+        {
+         "kind": "pendingReward",
+         "amount": "0.002890724334680202",
+         "fiatValue": "0.002888171825092679381634",
+         "title": {
+          "text": "0.002891 U"
+         },
+         "description": {
+          "text": "Rewards"
+         },
+         "tooltip": {
+          "type": "text",
+          "data": {
+           "title": {
+            "text": "Yield info"
+           },
+           "description": {
+            "text": "Rewards cannot be claimed separately and are settled together when the assets are redeemed"
+           }
+          }
+         }
+        }
+       ],
+       "rewardAssets": [
+        {
+         "kind": "claimablePrincipal",
+         "amount": "2.507864352864871648",
+         "fiatValue": "2.505649908641291966334816",
+         "title": {
+          "text": "2.5079 U"
+         },
+         "description": {
+          "text": "($2.51)"
+         },
+         "button": {
+          "type": "claimOrder",
+          "disabled": false,
+          "text": {
+           "text": "Claim"
+          }
+         }
+        }
+       ],
+       "buttons": [
+        {
+         "type": "manage",
+         "text": {
+          "text": "Manage"
+         },
+         "disabled": false
+        }
+       ]
+      },
+      "action": "manage",
+      "unstaking": {
+       "unlockAt": 1792120670000
+      }
+     }
+    },
+    {
+     "networkId": "evm--56",
+     "owner": "0x92bAA173828d55B2F1ed611352Aa0627AB825178",
+     "protocol": "bitway",
+     "protocolName": "Bitway",
+     "chain": "evm",
+     "category": "yield",
+     "debts": [],
+     "metrics": {
+      "healthFactor": null
+     },
+     "source": {
+      "provider": "onekey-earn",
+      "fetchedAt": "2026-10-14T08:09:30.258Z",
+      "ttl": 60000,
+      "cached": false
+     },
+     "name": "Bitway Absolute Return(USDT)",
+     "groupId": "bitway:evm--56:USDT:0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1",
+     "assets": [
+      {
+       "symbol": "USDT",
+       "address": "0x55d398326f99059ff775485246999027b3197955",
+       "amount": "56.614105561984313741",
+       "value": 56.570456086596025,
+       "price": 0.999229,
+       "category": "deposit",
+       "meta": {
+        "decimals": 18,
+        "logoUrl": "https://uni.onekey-asset.com/server-service-indexer/evm--56/tokens/address-0x55d398326f99059ff775485246999027b3197955-1720668660063.png",
+        "isVerified": true
+       }
+      }
+     ],
+     "rewards": [
+      {
+       "symbol": "USDT",
+       "address": "0x55d398326f99059ff775485246999027b3197955",
+       "amount": "0.025317902063340045",
+       "value": 0.02529838196084921,
+       "price": 0.999229,
+       "category": "reward",
+       "meta": {
+        "decimals": 18,
+        "logoUrl": "https://uni.onekey-asset.com/server-service-indexer/evm--56/tokens/address-0x55d398326f99059ff775485246999027b3197955-1720668660063.png",
+        "isVerified": true
+       },
+       "status": "pending",
+       "tooltip": {
+        "type": "text",
+        "data": {
+         "title": {
+          "text": "Yield info"
+         },
+         "description": {
+          "text": "Rewards cannot be claimed separately and are settled together when the assets are redeemed"
+         }
+        }
+       }
+      }
+     ],
+     "earn": {
+      "manage": {
+       "networkId": "evm--56",
+       "provider": "bitway",
+       "symbol": "USDT",
+       "vault": "0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1"
+      },
+      "symbol": "USDT",
+      "vault": "0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1",
+      "vaultName": "Bitway Absolute Return(USDT)",
+      "protocolCategory": "simpleEarn",
+      "protocolType": "liquid",
+      "providerLogoURI": "https://uni.onekey-asset.com/static/logo/bitway.png",
+      "network": {
+       "networkId": "evm--56",
+       "name": "BNB Chain",
+       "logoURI": "https://uni.onekey-asset.com/static/chain/bsc.png"
+      },
+      "investment": {
+       "totalFiatValue": "58.59421246855687304593",
+       "totalFiatValueUsd": "58.59421246855687304593",
+       "earnings24hFiatValue": "0.01162406631916356654",
+       "deposit": {
+        "title": {
+         "text": "58.6394 USDT"
+        },
+        "description": {
+         "text": "($58.59)",
+         "size": "$bodyMdMedium"
+        }
+       },
+       "earnings24h": {
+        "title": {
+         "text": "+$0.01",
+         "color": "$textSuccess"
+        }
+       },
+       "totalReward": {
+        "title": {
+         "text": "Total"
+        },
+        "description": {
+         "text": "+0.05445 USDT"
+        }
+       },
+       "assetsStatus": [
+        {
+         "kind": "active",
+         "amount": "56.614105561984313741",
+         "fiatValue": "56.570456086596023835105689",
+         "title": {
+          "text": "56.6141 USDT"
+         },
+         "description": {
+          "text": "Active"
+         }
+        },
+        {
+         "kind": "unstaking",
+         "amount": "1.000000000000000001",
+         "fiatValue": "0.999229000000000000999229",
+         "unlockSchedule": [
+          {
+           "amount": "0.000000000000000001",
+           "fiatValue": "0.000000000000000000999229",
+           "unlockAt": 1792120635000
+          },
+          {
+           "amount": "1",
+           "fiatValue": "0.999229",
+           "unlockAt": 1792382001000
+          }
+         ],
+         "title": {
+          "text": "1 USDT"
+         },
+         "description": {
+          "text": "Withdrawing"
+         },
+         "tooltip": {
+          "type": "withdraw",
+          "data": {
+           "title": {
+            "text": "Withdrawing"
+           },
+           "description": {
+            "text": "After the above time period, then your deposited assets will be available to claim."
+           },
+           "items": [
+            {
+             "title": {
+              "text": "0.0<subscripts>17</subscripts>1 USDT"
+             },
+             "description": {
+              "text": "2 days left"
+             }
+            },
+            {
+             "title": {
+              "text": "1 USDT"
+             },
+             "description": {
+              "text": "5 days left"
+             }
+            }
+           ]
+          }
+         }
+        },
+        {
+         "kind": "pendingReward",
+         "amount": "0.025317902063340045",
+         "fiatValue": "0.025298381960849209825305",
+         "title": {
+          "text": "0.02532 USDT"
+         },
+         "description": {
+          "text": "Rewards"
+         },
+         "tooltip": {
+          "type": "text",
+          "data": {
+           "title": {
+            "text": "Yield info"
+           },
+           "description": {
+            "text": "Rewards cannot be claimed separately and are settled together when the assets are redeemed"
+           }
+          }
+         }
+        }
+       ],
+       "rewardAssets": [
+        {
+         "kind": "claimablePrincipal",
+         "amount": "1",
+         "fiatValue": "0.999229",
+         "title": {
+          "text": "1 USDT"
+         },
+         "description": {
+          "text": "($1)"
+         },
+         "button": {
+          "type": "claimOrder",
+          "disabled": false,
+          "text": {
+           "text": "Claim"
+          }
+         }
+        }
+       ],
+       "buttons": [
+        {
+         "type": "manage",
+         "text": {
+          "text": "Manage"
+         },
+         "disabled": false
+        }
+       ]
+      },
+      "action": "manage"
+     }
+    },
+    {
+     "networkId": "evm--56",
+     "owner": "0x92bAA173828d55B2F1ed611352Aa0627AB825178",
+     "protocol": "bitway",
+     "protocolName": "Bitway",
+     "chain": "evm",
+     "category": "yield",
+     "debts": [],
+     "metrics": {
+      "healthFactor": null
+     },
+     "source": {
+      "provider": "onekey-earn",
+      "fetchedAt": "2026-10-14T08:09:30.258Z",
+      "ttl": 60000,
+      "cached": false
+     },
+     "name": "Bitway Absolute Return(USDT)",
+     "groupId": "bitway:evm--56:USDT:0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1:claimable",
+     "assets": [
+      {
+       "symbol": "USDT",
+       "address": "0x55d398326f99059ff775485246999027b3197955",
+       "amount": "1",
+       "value": 0.999229,
+       "price": 0.999229,
+       "category": "claimable",
+       "meta": {
+        "decimals": 18,
+        "logoUrl": "https://uni.onekey-asset.com/server-service-indexer/evm--56/tokens/address-0x55d398326f99059ff775485246999027b3197955-1720668660063.png",
+        "isVerified": true
+       }
+      }
+     ],
+     "rewards": [],
+     "earn": {
+      "manage": {
+       "networkId": "evm--56",
+       "provider": "bitway",
+       "symbol": "USDT",
+       "vault": "0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1"
+      },
+      "symbol": "USDT",
+      "vault": "0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1",
+      "vaultName": "Bitway Absolute Return(USDT)",
+      "protocolCategory": "simpleEarn",
+      "protocolType": "liquid",
+      "providerLogoURI": "https://uni.onekey-asset.com/static/logo/bitway.png",
+      "network": {
+       "networkId": "evm--56",
+       "name": "BNB Chain",
+       "logoURI": "https://uni.onekey-asset.com/static/chain/bsc.png"
+      },
+      "investment": {
+       "totalFiatValue": "58.59421246855687304593",
+       "totalFiatValueUsd": "58.59421246855687304593",
+       "earnings24hFiatValue": "0.01162406631916356654",
+       "deposit": {
+        "title": {
+         "text": "58.6394 USDT"
+        },
+        "description": {
+         "text": "($58.59)",
+         "size": "$bodyMdMedium"
+        }
+       },
+       "earnings24h": {
+        "title": {
+         "text": "+$0.01",
+         "color": "$textSuccess"
+        }
+       },
+       "totalReward": {
+        "title": {
+         "text": "Total"
+        },
+        "description": {
+         "text": "+0.05445 USDT"
+        }
+       },
+       "assetsStatus": [
+        {
+         "kind": "active",
+         "amount": "56.614105561984313741",
+         "fiatValue": "56.570456086596023835105689",
+         "title": {
+          "text": "56.6141 USDT"
+         },
+         "description": {
+          "text": "Active"
+         }
+        },
+        {
+         "kind": "unstaking",
+         "amount": "1.000000000000000001",
+         "fiatValue": "0.999229000000000000999229",
+         "unlockSchedule": [
+          {
+           "amount": "0.000000000000000001",
+           "fiatValue": "0.000000000000000000999229",
+           "unlockAt": 1792120635000
+          },
+          {
+           "amount": "1",
+           "fiatValue": "0.999229",
+           "unlockAt": 1792382001000
+          }
+         ],
+         "title": {
+          "text": "1 USDT"
+         },
+         "description": {
+          "text": "Withdrawing"
+         },
+         "tooltip": {
+          "type": "withdraw",
+          "data": {
+           "title": {
+            "text": "Withdrawing"
+           },
+           "description": {
+            "text": "After the above time period, then your deposited assets will be available to claim."
+           },
+           "items": [
+            {
+             "title": {
+              "text": "0.0<subscripts>17</subscripts>1 USDT"
+             },
+             "description": {
+              "text": "2 days left"
+             }
+            },
+            {
+             "title": {
+              "text": "1 USDT"
+             },
+             "description": {
+              "text": "5 days left"
+             }
+            }
+           ]
+          }
+         }
+        },
+        {
+         "kind": "pendingReward",
+         "amount": "0.025317902063340045",
+         "fiatValue": "0.025298381960849209825305",
+         "title": {
+          "text": "0.02532 USDT"
+         },
+         "description": {
+          "text": "Rewards"
+         },
+         "tooltip": {
+          "type": "text",
+          "data": {
+           "title": {
+            "text": "Yield info"
+           },
+           "description": {
+            "text": "Rewards cannot be claimed separately and are settled together when the assets are redeemed"
+           }
+          }
+         }
+        }
+       ],
+       "rewardAssets": [
+        {
+         "kind": "claimablePrincipal",
+         "amount": "1",
+         "fiatValue": "0.999229",
+         "title": {
+          "text": "1 USDT"
+         },
+         "description": {
+          "text": "($1)"
+         },
+         "button": {
+          "type": "claimOrder",
+          "disabled": false,
+          "text": {
+           "text": "Claim"
+          }
+         }
+        }
+       ],
+       "buttons": [
+        {
+         "type": "manage",
+         "text": {
+          "text": "Manage"
+         },
+         "disabled": false
+        }
+       ]
+      },
+      "action": "claim",
+      "claim": {
+       "type": "claimOrder",
+       "disabled": false,
+       "text": {
+        "text": "Claim"
+       }
+      },
+      "claimSource": "investment"
+     }
+    },
+    {
+     "networkId": "evm--56",
+     "owner": "0x92bAA173828d55B2F1ed611352Aa0627AB825178",
+     "protocol": "bitway",
+     "protocolName": "Bitway",
+     "chain": "evm",
+     "category": "yield",
+     "debts": [],
+     "metrics": {
+      "healthFactor": null
+     },
+     "source": {
+      "provider": "onekey-earn",
+      "fetchedAt": "2026-10-14T08:09:30.258Z",
+      "ttl": 60000,
+      "cached": false
+     },
+     "name": "Bitway Absolute Return(USDT)",
+     "groupId": "bitway:evm--56:USDT:0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1:unstaking:0",
+     "assets": [
+      {
+       "symbol": "USDT",
+       "address": "0x55d398326f99059ff775485246999027b3197955",
+       "amount": "1",
+       "value": 0.999229,
+       "price": 0.999229,
+       "category": "unstaking",
+       "meta": {
+        "decimals": 18,
+        "logoUrl": "https://uni.onekey-asset.com/server-service-indexer/evm--56/tokens/address-0x55d398326f99059ff775485246999027b3197955-1720668660063.png",
+        "isVerified": true
+       }
+      }
+     ],
+     "rewards": [],
+     "earn": {
+      "manage": {
+       "networkId": "evm--56",
+       "provider": "bitway",
+       "symbol": "USDT",
+       "vault": "0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1"
+      },
+      "symbol": "USDT",
+      "vault": "0x5c4a6903732532eeb3ae0803e062d8ae25d52bd1",
+      "vaultName": "Bitway Absolute Return(USDT)",
+      "protocolCategory": "simpleEarn",
+      "protocolType": "liquid",
+      "providerLogoURI": "https://uni.onekey-asset.com/static/logo/bitway.png",
+      "network": {
+       "networkId": "evm--56",
+       "name": "BNB Chain",
+       "logoURI": "https://uni.onekey-asset.com/static/chain/bsc.png"
+      },
+      "investment": {
+       "totalFiatValue": "58.59421246855687304593",
+       "totalFiatValueUsd": "58.59421246855687304593",
+       "earnings24hFiatValue": "0.01162406631916356654",
+       "deposit": {
+        "title": {
+         "text": "58.6394 USDT"
+        },
+        "description": {
+         "text": "($58.59)",
+         "size": "$bodyMdMedium"
+        }
+       },
+       "earnings24h": {
+        "title": {
+         "text": "+$0.01",
+         "color": "$textSuccess"
+        }
+       },
+       "totalReward": {
+        "title": {
+         "text": "Total"
+        },
+        "description": {
+         "text": "+0.05445 USDT"
+        }
+       },
+       "assetsStatus": [
+        {
+         "kind": "active",
+         "amount": "56.614105561984313741",
+         "fiatValue": "56.570456086596023835105689",
+         "title": {
+          "text": "56.6141 USDT"
+         },
+         "description": {
+          "text": "Active"
+         }
+        },
+        {
+         "kind": "unstaking",
+         "amount": "1.000000000000000001",
+         "fiatValue": "0.999229000000000000999229",
+         "unlockSchedule": [
+          {
+           "amount": "0.000000000000000001",
+           "fiatValue": "0.000000000000000000999229",
+           "unlockAt": 1792120635000
+          },
+          {
+           "amount": "1",
+           "fiatValue": "0.999229",
+           "unlockAt": 1792382001000
+          }
+         ],
+         "title": {
+          "text": "1 USDT"
+         },
+         "description": {
+          "text": "Withdrawing"
+         },
+         "tooltip": {
+          "type": "withdraw",
+          "data": {
+           "title": {
+            "text": "Withdrawing"
+           },
+           "description": {
+            "text": "After the above time period, then your deposited assets will be available to claim."
+           },
+           "items": [
+            {
+             "title": {
+              "text": "0.0<subscripts>17</subscripts>1 USDT"
+             },
+             "description": {
+              "text": "2 days left"
+             }
+            },
+            {
+             "title": {
+              "text": "1 USDT"
+             },
+             "description": {
+              "text": "5 days left"
+             }
+            }
+           ]
+          }
+         }
+        },
+        {
+         "kind": "pendingReward",
+         "amount": "0.025317902063340045",
+         "fiatValue": "0.025298381960849209825305",
+         "title": {
+          "text": "0.02532 USDT"
+         },
+         "description": {
+          "text": "Rewards"
+         },
+         "tooltip": {
+          "type": "text",
+          "data": {
+           "title": {
+            "text": "Yield info"
+           },
+           "description": {
+            "text": "Rewards cannot be claimed separately and are settled together when the assets are redeemed"
+           }
+          }
+         }
+        }
+       ],
+       "rewardAssets": [
+        {
+         "kind": "claimablePrincipal",
+         "amount": "1",
+         "fiatValue": "0.999229",
+         "title": {
+          "text": "1 USDT"
+         },
+         "description": {
+          "text": "($1)"
+         },
+         "button": {
+          "type": "claimOrder",
+          "disabled": false,
+          "text": {
+           "text": "Claim"
+          }
+         }
+        }
+       ],
+       "buttons": [
+        {
+         "type": "manage",
+         "text": {
+          "text": "Manage"
+         },
+         "disabled": false
+        }
+       ]
+      },
+      "action": "manage",
+      "unstaking": {
+       "unlockAt": 1792382001000
+      }
+     }
+    }
+   ]
+  },
+  "protocolSummaries": [
+   {
+    "protocol": "spark",
+    "protocolName": "Spark",
+    "protocolLogo": "https://uni-test.onekey-asset.com/static/logo/spark.png",
+    "protocolUrl": "",
+    "networkIds": [
+     "evm--1"
+    ],
+    "totalValue": 21.153205354798,
+    "totalDebt": 0,
+    "totalReward": 0,
+    "netWorth": 21.153205354798,
+    "positionCount": 2,
+    "positionIndices": [
+     {
+      "index": 0,
+      "networkId": "evm--1"
+     },
+     {
+      "index": 1,
+      "networkId": "evm--1"
+     }
+    ]
+   },
+   {
+    "protocol": "bitway",
+    "protocolName": "Bitway",
+    "protocolLogo": "https://uni.onekey-asset.com/static/logo/bitway.png",
+    "protocolUrl": "",
+    "networkIds": [
+     "evm--56"
+    ],
+    "totalValue": 65.62946270380438,
+    "totalDebt": 0,
+    "totalReward": 0.028186553785941888,
+    "netWorth": 65.65764925759032,
+    "positionCount": 6,
+    "positionIndices": [
+     {
+      "index": 0,
+      "networkId": "evm--56"
+     },
+     {
+      "index": 1,
+      "networkId": "evm--56"
+     },
+     {
+      "index": 2,
+      "networkId": "evm--56"
+     },
+     {
+      "index": 3,
+      "networkId": "evm--56"
+     },
+     {
+      "index": 4,
+      "networkId": "evm--56"
+     },
+     {
+      "index": 5,
+      "networkId": "evm--56"
+     }
+    ]
+   }
+  ],
+  "errors": []
+ }
+}

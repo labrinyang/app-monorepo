@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import pLimit from 'p-limit';
+import { useIntl } from 'react-intl';
 
 import backgroundApiProxy from '@onekeyhq/kit/src/background/instance/backgroundApiProxy';
 import { useActiveAccount } from '@onekeyhq/kit/src/states/jotai/contexts/accountSelector';
@@ -15,6 +16,10 @@ import {
   buildPositionsRequests,
   mergePortfolioPositionsResponses,
 } from './earnPortfolioPositions.utils';
+import {
+  DEMO_POSITION_ROW_ACTIONS,
+  getDemoPositionsResponse,
+} from './positionRowActionsDemo';
 
 import type { IRefreshOptions } from '../../../hooks/useEarnPortfolio';
 
@@ -29,7 +34,14 @@ const EMPTY_CACHE: Record<string, IEarnPortfolioPositionsResponse> = {};
  * the wallet no longer holds on. `refresh({ provider })` fetches only that
  * provider again, which is what a settled claim / stake asks for.
  */
-export function useEarnPortfolioPositions({ isActive }: { isActive: boolean }) {
+export function useEarnPortfolioPositions({
+  isActive: isPageActive,
+}: {
+  isActive: boolean;
+}) {
+  // Product demo: the fixed dataset stands in for the account's positions.
+  const isActive = isPageActive && !DEMO_POSITION_ROW_ACTIONS;
+  const intl = useIntl();
   const { activeAccount } = useActiveAccount({ num: 0 });
   const { account, indexedAccount } = activeAccount;
   const accountId = account?.id ?? '';
@@ -181,5 +193,15 @@ export function useEarnPortfolioPositions({ isActive }: { isActive: boolean }) {
     [results],
   );
 
+  if (DEMO_POSITION_ROW_ACTIONS) {
+    return {
+      response: getDemoPositionsResponse({
+        locale: intl.locale,
+        translate: (id) => intl.formatMessage({ id }),
+      }),
+      isLoading: false,
+      refresh,
+    };
+  }
   return { response, isLoading, refresh };
 }

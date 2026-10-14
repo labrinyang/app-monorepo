@@ -40,6 +40,12 @@ const BorrowReserveDetails = LazyLoadRootTabPage(
   () => import('../../../views/Borrow/pages/ReserveDetails'),
 );
 
+// Web at phone width reaches the phone My portfolio page from the Earn home
+// total (OK-61377 review); native registers it in the Discovery stack.
+const EarnPositions = LazyLoadRootTabPage(
+  () => import('../../../views/Earn/pages/EarnPositions'),
+);
+
 export const earnRouters: ITabSubNavigatorConfig<any, any>[] = [
   {
     rewrite: '/',
@@ -82,6 +88,11 @@ export const earnRouters: ITabSubNavigatorConfig<any, any>[] = [
     component: EarnProtocolDetails,
     exact: true,
     rewrite: '/earn/:network/:symbol/:provider',
+    headerShown: !platformEnv.isNative,
+  },
+  {
+    name: ETabEarnRoutes.EarnPositions,
+    component: EarnPositions,
     headerShown: !platformEnv.isNative,
   },
   {

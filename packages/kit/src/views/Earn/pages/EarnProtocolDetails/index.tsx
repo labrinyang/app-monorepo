@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import type { ReactNode } from 'react';
 
 import { useHeaderHeight } from '@react-navigation/elements';
 import { useIntl } from 'react-intl';
@@ -105,6 +106,7 @@ import { EarnPageContainer } from '../../components/EarnPageContainer';
 import { EarnProviderMirror } from '../../EarnProviderMirror';
 import { EarnNavigation, EarnNetworkUtils } from '../../earnUtils';
 import { useStakingPendingTxs } from '../../hooks/useStakingPendingTxs';
+import { useDemoPagePosition } from '../EarnPositions/mobile/positionRowActionsDemo';
 
 import { ActivityBanner } from './components/ActivityBanner';
 import { ApyChart } from './components/ApyChart';
@@ -118,6 +120,7 @@ import { useProtocolDetailBreadcrumb } from './hooks/useProtocolDetailBreadcrumb
 import { useProtocolDetailData } from './hooks/useProtocolDetailData';
 import { MobileDetailTabs } from './mobile/MobileDetailTabs';
 import { PortfolioTab } from './mobile/PortfolioTab';
+import { PositionPortfolioTab } from './mobile/PositionPortfolioTab';
 import {
   pickProtocolInfoDisplayName,
   resolveProviderSubtitle,
@@ -133,6 +136,7 @@ import {
   isYieldSheetAvailable,
 } from './mobile/yieldSegments.utils';
 
+import type { IEarnPositionView } from '../EarnPositions/mobile/earnPositionModel';
 import type { RouteProp } from '@react-navigation/core';
 
 function ManagersSection({
@@ -865,6 +869,7 @@ const DetailsPartComponent = ({
   scrollToPortfolio,
   onRedeem,
   onActionSuccess,
+  pagePosition,
 }: {
   detailInfo: IStakeEarnDetail | undefined;
   tokenInfo?: IEarnTokenInfo;
@@ -890,6 +895,8 @@ const DetailsPartComponent = ({
   // A claim, stake or withdraw broadcast from the Portfolio tab. Falls back
   // to onRefresh for callers that only have the plain reload.
   onActionSuccess?: () => void;
+  // phone: the holding's card, drawn on the Portfolio tab (product 10-14)
+  pagePosition?: IEarnPositionView;
 }) => {
   const now = useMemo(() => Date.now(), []);
 
@@ -964,6 +971,28 @@ const DetailsPartComponent = ({
       </YStack>
     ) : null;
 
+  // Product demo (10-14): the holding's card when the positions have it,
+  // the server's Portfolio read model otherwise.
+  let portfolioContent: ReactNode = null;
+  if (pagePosition) {
+    portfolioContent = <PositionPortfolioTab position={pagePosition} />;
+  } else if (detailInfo?.mobilePortfolio?.groups?.length) {
+    portfolioContent = (
+      <PortfolioTab
+        portfolio={detailInfo.mobilePortfolio}
+        networkId={networkId}
+        symbol={symbol}
+        provider={provider}
+        vault={detailInfo.protocol?.vault ?? vault}
+        onActionSuccess={onActionSuccess ?? onRefresh}
+        onRedeem={onRedeem}
+        canRedeem={canRedeem}
+        protocolInfo={protocolInfo}
+        tokenInfo={tokenInfo}
+      />
+    );
+  }
+
   if (isMobileLayout) {
     return (
       <YStack flex={6} gap="$5" px="$pagePadding">
@@ -1012,22 +1041,7 @@ const DetailsPartComponent = ({
               <View ref={tabsAnchorRef} onLayout={handleTabsLayout}>
                 <MobileDetailTabs
                   hasPortfolio={Boolean(hasPortfolio)}
-                  portfolioContent={
-                    detailInfo.mobilePortfolio?.groups?.length ? (
-                      <PortfolioTab
-                        portfolio={detailInfo.mobilePortfolio}
-                        networkId={networkId}
-                        symbol={symbol}
-                        provider={provider}
-                        vault={detailInfo.protocol?.vault ?? vault}
-                        onActionSuccess={onActionSuccess ?? onRefresh}
-                        onRedeem={onRedeem}
-                        canRedeem={canRedeem}
-                        protocolInfo={protocolInfo}
-                        tokenInfo={tokenInfo}
-                      />
-                    ) : null
-                  }
+                  portfolioContent={portfolioContent}
                   infoContent={
                     <YStack gap="$8">
                       {/* mobileInfo is the phone-only copy of intro (Vault cell
@@ -1291,16 +1305,28 @@ const EarnProtocolDetailsPage = ({ route }: { route: IRouteProps }) => {
     ],
   );
 
+  // Product demo (10-14): the Portfolio tab draws the holding's card, read
+  // from the same positions My portfolio shows (the demo dataset for now).
+  const pagePosition = useDemoPagePosition({
+    networkId,
+    provider,
+    symbol,
+    vault,
+  });
+
   // The portfolio tab needs the account-scoped response, so it stays hidden
   // until the server says there is something to show. Falls back to the balance
   // when the server predates the mobile read model.
   const hasPortfolio = useMemo(() => {
+    if (pagePosition) {
+      return true;
+    }
     if (detailInfo?.mobilePortfolio) {
       return detailInfo.mobilePortfolio.hasPosition;
     }
     const balance = Number(tokenInfo?.balanceParsed ?? '0');
     return Number.isFinite(balance) && balance > 0;
-  }, [detailInfo?.mobilePortfolio, tokenInfo?.balanceParsed]);
+  }, [pagePosition, detailInfo?.mobilePortfolio, tokenInfo?.balanceParsed]);
 
   useUnsupportedProtocol({
     detailInfo,
@@ -1735,6 +1761,7 @@ const EarnProtocolDetailsPage = ({ route }: { route: IRouteProps }) => {
             canRedeem={canRedeem}
             scrollToPortfolio={resolvedParams.scrollToPortfolio}
             onRedeem={handleOpenRedeem}
+            pagePosition={pagePosition}
           />
         </Stack>
         {gtMd ? (

@@ -188,7 +188,7 @@ describe('earn position model: one card per holding', () => {
         ETranslations.earn_withdrawal_requested,
         ['0.25', '0.3'],
       ],
-      ['redeemable', ETranslations.defi_redeemable, ['0.5']],
+      ['claimable', ETranslations.earn_claimable, ['0.5']],
     ]);
     const pending = deposit.sections.find(
       (section) => section.kind === 'pendingWithdrawal',
@@ -213,11 +213,18 @@ describe('earn position model: one card per holding', () => {
       deposit.hasDeposit,
       deposit.hasRewards,
       deposit.hasPendingWithdrawal,
-      deposit.hasRedeemable,
+      deposit.hasClaimable,
     ]).toEqual([true, false, true, true]);
+    // the claimable row keeps the server position its Claim runs on
+    const claimable = deposit.sections.find(
+      (section) => section.kind === 'claimable',
+    );
+    expect(claimable?.assets.map((asset) => asset.origin.groupId)).toEqual([
+      'lido:evm--1:steth:claimable',
+    ]);
   });
 
-  it('dates the pending withdrawal row and keeps the category badge on a staked holding', () => {
+  it('dates the pending withdrawal row, keeps the position its Cancel runs on, and keeps the category badge on a staked holding', () => {
     const native = card(
       protocolRow('evm--1-native'),
       `native:evm--1:${NATIVE_USDT_VAULT}`,
@@ -231,8 +238,11 @@ describe('earn position model: one card per holding', () => {
       native.sections.find((section) => section.kind === 'pendingWithdrawal')
         ?.assets ?? [];
     expect(row.unlockAt).toBe(NATIVE_UNLOCK_AT);
-    // the row carries no Cancel: the detail page runs it
-    expect(row).not.toHaveProperty('cancelSource');
+    // the row runs the Cancel of the withdrawal it came from (product 10-14)
+    expect(row.origin.groupId).toBe(
+      `native:evm--1:${NATIVE_USDT_VAULT}:unstaking:0`,
+    );
+    expect(row.origin.earn.cancel?.type).toBeDefined();
     // still a staked holding: the category badge, not Locked
     expect(native.badgeLabel).toBe(
       ETranslations.wallet_defi_position_module_deposit,
@@ -267,7 +277,7 @@ describe('earn position model: one card per holding', () => {
       ETranslations.wallet_defi_position_module_deposit,
     );
     expect(cooldown.sections.map((section) => section.kind)).toEqual([
-      'redeemable',
+      'claimable',
     ]);
     expect(cooldown.hasDeposit).toBe(false);
     expect(cooldown.principalClaims.map((source) => source.groupId)).toEqual([
@@ -323,7 +333,7 @@ describe('earn position model: one card per holding', () => {
     expect(eth.sections.map((section) => section.kind)).toEqual([
       'deposited',
       'rewards',
-      'redeemable',
+      'claimable',
     ]);
     expect(eth.action?.kind).toBe('manage');
     expect(eth.principalClaims.map((source) => source.groupId)).toEqual([
@@ -525,13 +535,20 @@ describe('earn position model: rewards claimable stage', () => {
     );
   });
 
-  it("keeps Lista's Check row off the card and on the list, its button the only way to the amount", () => {
+  it("offers Lista's Check on its row, on the card and on the list, its button the only way to the amount", () => {
     const key = `lista:evm--56:USDT:${LISTA_VAULT}`;
     const lista = card(protocolRow('evm--56-lista'), key);
-    // the card has no row buttons: no zero row, and the card's Claim never signs
+    // the card's Rewards panel keeps the zero row; its Check is the row's button
     expect(lista.sections.map((section) => section.kind)).toEqual([
       'deposited',
+      'rewards',
     ]);
+    const rewards = lista.sections.find(
+      (section) => section.kind === 'rewards',
+    );
+    expect(
+      rewards?.assets.map((asset) => [asset.amount, asset.claim?.button.type]),
+    ).toEqual([['0', 'listaCheck']]);
     expect(lista.claimableRewards).toEqual([]);
     expect(lista.action?.kind).toBe('manage');
     // the list offers the Check on the row, at zero, adding nothing to the header

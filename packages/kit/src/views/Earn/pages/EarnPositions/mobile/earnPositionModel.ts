@@ -39,15 +39,15 @@ import type {
  * principal with its rewards, the principal out of its cooldown, one
  * position per withdrawal in progress), the way the wallet DeFi portfolio
  * keys positions. Product (10-12): one holding is one card, made of the
- * four things a position can hold — Deposited (withdrawn on the detail
- * page), Rewards (claimed), Pending withdrawal (one row per withdrawal in
- * progress, cancelled on the detail page) and Redeemable (the principal out
- * of its cooldown, redeemed on the detail page). So the states of one
- * holding — same protocol, network, provider, symbol and vault — are folded
- * into one card here, as those sections, and the card has two buttons:
- * Manage into the detail page, where Withdraw, Cancel and Redeem live, and
- * Claim for the rewards the server attached a claim to (one claim goes
- * straight to the confirm page, several open a sheet with one Claim each).
+ * four things a position can hold — Deposited, Rewards, Pending withdrawal
+ * (one row per withdrawal in progress) and Claimable (the principal out of
+ * its cooldown). So the states of one holding — same protocol, network,
+ * provider, symbol and vault — are folded into one card here, as those
+ * sections. Product (10-14): every row acts in place, the way the detail
+ * page's Portfolio rows do — Redeem on a deposit, Claim (or Lista's Check) on
+ * a reward, Cancel on a withdrawal the provider lets be called back, Claim on
+ * the principal out of its cooldown — so each row keeps the server position
+ * it came from (`origin`), whose claim or cancel its button runs.
  * The wallet DeFi Portfolio code still does the grouping and the valuation:
  * defiUtils.transformDeFiData groups positions into one protocol per
  * network, buildLocalizedProtocolPositionItems gives the health factor.
@@ -61,16 +61,18 @@ export type IEarnPositionSectionKind =
   | 'borrowed'
   | 'rewards'
   | 'pendingWithdrawal'
-  | 'redeemable';
+  | 'claimable';
 
 export type IEarnPositionSectionAsset = IDeFiAsset & {
+  /** the server position the row came from: its claim or cancel is the row's button */
+  origin: IEarnPortfolioPosition;
   /** ms; pending withdrawal rows whose provider knows when the funds free up */
   unlockAt?: number;
-  /** reward rows: the claim the card runs, when the server attached one */
+  /** reward rows: the claim the row runs, when the server attached one */
   claim?: IEarnPositionRewardClaim;
   /** reward rows: `pending` when the user cannot claim the reward by itself yet */
   status?: 'pending';
-  /** reward rows: the detail row's explanation, opened from an info icon */
+  /** reward rows: the detail row's explanation, opened from the Pending badge */
   tooltip?: IEarnTooltip;
 };
 
@@ -105,18 +107,11 @@ export type IEarnPositionView = {
   value: IProtocolValueState;
   meta?: IEarnPositionMeta;
   sections: IEarnPositionSectionView[];
-  /** the way into the detail page, where Withdraw, Cancel and Redeem live */
+  /** the way into the detail page: the card's header line opens it */
   action?: IEarnPositionAction;
-  /**
-   * Principal out of its cooldown: the server positions carrying
-   * `earn.claim`. Redeemed on the detail page; the card runs the claim only
-   * where the holding has no page to go to.
-   */
+  /** Principal out of its cooldown: the server positions carrying `earn.claim`. */
   principalClaims: IEarnPortfolioPosition[];
-  /**
-   * The rewards the card's Claim collects: every reward row whose claim the
-   * server sent enabled (figma 30490-21882: Claim shows only for those).
-   */
+  /** Every reward row of the main position whose claim the server sent enabled. */
   claimableRewards: IEarnClaimableReward[];
   /**
    * The part of the deposit that came through OneKey, under a campaign paid
@@ -127,7 +122,7 @@ export type IEarnPositionView = {
   hasDeposit: boolean;
   hasRewards: boolean;
   hasPendingWithdrawal: boolean;
-  hasRedeemable: boolean;
+  hasClaimable: boolean;
   /** the holding's main server position: the staked one, else the one with rewards, else the first */
   source: IEarnPortfolioPosition;
   /** every server position folded into the card */
@@ -154,14 +149,16 @@ const EARN_CATEGORIES: ReadonlySet<string> = new Set<IEarnPositionCategory>([
 
 // Pending withdrawal reuses the status the detail page prints on these very
 // rows ("Withdrawal requested"); a dedicated "Pending withdrawal" key is
-// still on the OK-61377 i18n list.
+// still on the OK-61377 i18n list. The principal out of its cooldown reads
+// Claimable, the detail page's word for that row, so Redeem (the deposit's
+// button) only ever means starting a withdrawal (product 10-14).
 const SECTION_TITLE_IDS: Record<IEarnPositionSectionKind, ETranslations> = {
   deposited: ETranslations.earn_deposited,
   supplied: ETranslations.wallet_defi_asset_type_supplied,
   borrowed: ETranslations.wallet_defi_asset_type_borrowed,
   rewards: ETranslations.wallet_defi_position_module_rewards,
   pendingWithdrawal: ETranslations.earn_withdrawal_requested,
-  redeemable: ETranslations.defi_redeemable,
+  claimable: ETranslations.earn_claimable,
 };
 
 const SECTION_ASSET_TYPES: Record<
@@ -173,7 +170,7 @@ const SECTION_ASSET_TYPES: Record<
   borrowed: 'borrowed',
   rewards: 'rewards',
   pendingWithdrawal: 'supplied',
-  redeemable: 'supplied',
+  claimable: 'supplied',
 };
 
 // Product (10-12): what sits in the vault first, its debt with it, then what
@@ -184,7 +181,7 @@ const SECTION_ORDER: IEarnPositionSectionKind[] = [
   'borrowed',
   'rewards',
   'pendingWithdrawal',
-  'redeemable',
+  'claimable',
 ];
 
 function isEarnCategory(category: string): category is IEarnPositionCategory {
@@ -224,11 +221,10 @@ function isClaimEnabled(button: IEarnActionIcon): boolean {
 
 /**
  * Lista's Check row: a zero reward whose button is the signature that
- * reveals the amount. The Rewards list offers it on the row, the way the
- * detail page does; the card, which has no row buttons, leaves it out, and
- * the card's Claim never runs it.
+ * reveals the amount. The card and the Rewards list offer it on the row,
+ * the way the detail page does; it is never counted as a claimable reward.
  */
-function isCheckRow(reward: IEarnPositionRewardAsset): boolean {
+export function isCheckRow(reward: IEarnPositionRewardAsset): boolean {
   return reward.claim?.button.type === 'listaCheck';
 }
 
@@ -244,10 +240,10 @@ function hasEnabledClaim(
 
 /**
  * The card's sections, from every state of the holding: the staked
- * principal (Supplied on a loan) with its debts, the rewards, each
- * withdrawal in progress dated when the provider knows (soonest first), and
- * the principal out of its cooldown, ready to redeem. The rows carry no
- * buttons: the detail page acts on them.
+ * principal (Supplied on a loan) with its debts, the rewards (Lista's Check
+ * row included), each withdrawal in progress dated when the provider knows
+ * (soonest first), and the principal out of its cooldown, ready to claim.
+ * Every row keeps its server position, whose claim or cancel its button runs.
  */
 function buildSections({
   sources,
@@ -279,24 +275,25 @@ function buildSections({
     source.assets.forEach((asset) => {
       switch (asset.category) {
         case 'claimable':
-          push('redeemable', asset);
+          push('claimable', { ...asset, origin: source });
           break;
         case 'unstaking':
           push('pendingWithdrawal', {
             ...asset,
+            origin: source,
             unlockAt: source.earn.unstaking?.unlockAt,
           });
           break;
         default:
-          push(principalKind, asset);
+          push(principalKind, { ...asset, origin: source });
       }
     });
-    source.debts.forEach((asset) => push('borrowed', asset));
-    source.rewards.forEach((asset) => {
-      if (!isCheckRow(asset)) {
-        push('rewards', asset);
-      }
-    });
+    source.debts.forEach((asset) =>
+      push('borrowed', { ...asset, origin: source }),
+    );
+    source.rewards.forEach((asset) =>
+      push('rewards', { ...asset, origin: source }),
+    );
   });
   const pending = byKind.get('pendingWithdrawal');
   if (pending) {
@@ -364,7 +361,7 @@ function buildPositionView({
   const hasDeposit = has('deposited') || has('supplied');
   const hasRewards = has('rewards');
   const hasPendingWithdrawal = has('pendingWithdrawal');
-  const hasRedeemable = has('redeemable');
+  const hasClaimable = has('claimable');
   // Product (10-13): a holding reads as what the user put in, Deposit for
   // every protocol, the label the wallet DeFi page gives deposit positions;
   // a loan reads Lending, and a holding that is nothing but withdrawals in
@@ -375,7 +372,7 @@ function buildPositionView({
   } else if (
     hasPendingWithdrawal &&
     !hasDeposit &&
-    !hasRedeemable &&
+    !hasClaimable &&
     !hasRewards
   ) {
     badgeId = ETranslations.wallet_defi_position_module_locked;
@@ -405,7 +402,7 @@ function buildPositionView({
     hasDeposit,
     hasRewards,
     hasPendingWithdrawal,
-    hasRedeemable,
+    hasClaimable,
     source,
     sources,
   };

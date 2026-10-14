@@ -137,13 +137,15 @@ function toInvestmentAsset(
   };
 }
 
-/** The investment detail's claimable-principal row behind a card claim, as a normal asset the button understands. */
+/** The investment detail's own row behind a card row's button, as a normal asset the button understands. */
 function toInvestmentRowAction({
   position,
   button,
+  kind,
 }: {
   position: IEarnPortfolioPosition;
   button: IEarnActionIcon;
+  kind: 'claimablePrincipal' | 'unstaking';
 }): IEarnPositionClaim {
   const { earn } = position;
   const { investment } = earn;
@@ -151,7 +153,7 @@ function toInvestmentRowAction({
   const row = [
     ...(investment.rewardAssets ?? []),
     ...(investment.assetsStatus ?? []),
-  ].find((entry) => entry.kind === 'claimablePrincipal' && entry.button);
+  ].find((entry) => entry.kind === kind && entry.button);
   return {
     asset: toInvestmentAsset(position),
     reward: {
@@ -231,8 +233,7 @@ export function toPositionRewardClaim(
  * `earn.vault`. The investment detail's claim travels as a normal asset
  * row; the airdrop read's (the USDe cooled down at Ethena, reached through
  * Pendle) as an airdrop row, which Pendle resolves from symbol and vault.
- * Product (10-12) redeems on the detail page; the card runs this only for
- * a holding that has no page to go to.
+ * The card's Claimable row runs it in place (product 10-14).
  */
 export function toPositionClaim(
   position: IEarnPortfolioPosition,
@@ -243,7 +244,11 @@ export function toPositionClaim(
     return undefined;
   }
   if (earn.claimSource !== 'airdrop') {
-    return toInvestmentRowAction({ position, button: claim });
+    return toInvestmentRowAction({
+      position,
+      button: claim,
+      kind: 'claimablePrincipal',
+    });
   }
   const asset = position.assets[0];
   const rewardSymbol = asset?.symbol ?? earn.symbol;
@@ -273,6 +278,21 @@ export function toPositionClaim(
     reward: airdropRow,
     rewardSymbol,
   };
+}
+
+/**
+ * A withdrawal in progress the provider lets be called back (Native): the
+ * card's Pending withdrawal row runs the cancel the wide layout runs on that
+ * row, through the same button.
+ */
+export function toPositionCancel(
+  position: IEarnPortfolioPosition,
+): IEarnPositionClaim | undefined {
+  const { cancel } = position.earn;
+  if (!cancel) {
+    return undefined;
+  }
+  return toInvestmentRowAction({ position, button: cancel, kind: 'unstaking' });
 }
 
 /**

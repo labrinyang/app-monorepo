@@ -66,6 +66,7 @@ import {
   useEarnPendingTxsSharedMeta,
   useStakingPendingTxsByInfo,
 } from './hooks/useStakingPendingTxs';
+import { useMyPortfolioLayout } from './pages/EarnPositions/mobile/useMyPortfolioLayout';
 
 import type { IEarnBorrowPagerViewRef } from './components/EarnBorrowPagerView';
 import type { IStakePendingTx } from './hooks/useStakingPendingTxs';
@@ -674,6 +675,9 @@ function BasicEarnHome({
   const handleOpenPortfolio = useCallback(() => {
     EarnNavigation.pushToEarnPositions(navigation);
   }, [navigation]);
+  // Web at phone width renders the phone My portfolio page (OK-61377 review
+  // switch); the total is its way in there, as on the phone.
+  const isMyPortfolioLayout = useMyPortfolioLayout();
 
   // Home-top shortcut entries (OK-58562)
   const handleOpenTokens = useCallback(() => {
@@ -790,6 +794,9 @@ function BasicEarnHome({
                     isLoading={isOverviewRefreshing}
                     displayTotalFiatValue={displayTotalFiatValue}
                     displayEarnings24h={displayEarnings24h}
+                    onPressTotalValue={
+                      isMyPortfolioLayout ? handleOpenPortfolio : undefined
+                    }
                   />
                 </XStack>
               </YStack>
