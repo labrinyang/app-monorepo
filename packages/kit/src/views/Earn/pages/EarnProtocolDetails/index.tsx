@@ -106,7 +106,10 @@ import { EarnPageContainer } from '../../components/EarnPageContainer';
 import { EarnProviderMirror } from '../../EarnProviderMirror';
 import { EarnNavigation, EarnNetworkUtils } from '../../earnUtils';
 import { useStakingPendingTxs } from '../../hooks/useStakingPendingTxs';
-import { useDemoPagePosition } from '../EarnPositions/mobile/positionRowActionsDemo';
+import {
+  getDemoPageCanRedeem,
+  useDemoPagePosition,
+} from '../EarnPositions/mobile/positionRowActionsDemo';
 
 import { ActivityBanner } from './components/ActivityBanner';
 import { ApyChart } from './components/ApyChart';
@@ -1620,6 +1623,9 @@ const EarnProtocolDetailsPage = ({ route }: { route: IRouteProps }) => {
       hasPortfolio,
     ],
   );
+  // Product demo (10-14): the web preview's account holds none of the demo
+  // positions, so the demo holding decides whether the footer can redeem.
+  const demoCanRedeem = getDemoPageCanRedeem(pagePosition);
   const canRedeem =
     Boolean(detailInfo?.mobilePortfolio?.capabilities.redeem) ||
     redeemWithoutActions;
@@ -1671,9 +1677,12 @@ const EarnProtocolDetailsPage = ({ route }: { route: IRouteProps }) => {
       (Boolean(redeemAction) || isPendle || redeemWithoutActions);
     const depositDisabled =
       Boolean(depositAction?.disabled) || (isPendle && isMatured);
-    const withdrawDisabled = isPendle
+    let withdrawDisabled = isPendle
       ? !hasPortfolio
       : Boolean(redeemAction?.disabled);
+    if (demoCanRedeem !== undefined && !isPendle) {
+      withdrawDisabled = !demoCanRedeem;
+    }
     const redeemText = intl.formatMessage({
       id:
         isPendle && !isMatured
@@ -1716,6 +1725,7 @@ const EarnProtocolDetailsPage = ({ route }: { route: IRouteProps }) => {
     provider,
     hasPortfolio,
     redeemWithoutActions,
+    demoCanRedeem,
   ]);
 
   return (

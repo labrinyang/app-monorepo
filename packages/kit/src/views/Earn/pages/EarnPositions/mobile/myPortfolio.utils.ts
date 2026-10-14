@@ -75,6 +75,21 @@ export function hasPositionDetailPage(
   );
 }
 
+/**
+ * Redeem on a deposit follows the detail page's footer: Pendle sells its PT
+ * instead (Sell early / Redeem at maturity, on its own page), Ethena USDe is
+ * managed rather than redeemed, and a holding with no page has nothing to
+ * open.
+ */
+export function canRedeemFromCard(position: IEarnPortfolioPosition): boolean {
+  const { manage } = position.earn;
+  return (
+    hasPositionDetailPage(position) &&
+    !earnUtils.isPendleProvider({ providerName: manage.provider }) &&
+    manage.symbol.toUpperCase() !== 'USDE'
+  );
+}
+
 const EMPTY_TEXT = { text: '' };
 
 /** A detail row with the button the card presses, the shape the claim button takes for a normal asset. */

@@ -25,7 +25,6 @@ import { EarnText } from '@onekeyhq/kit/src/views/Staking/components/ProtocolDet
 import { EarnTooltip } from '@onekeyhq/kit/src/views/Staking/components/ProtocolDetails/EarnTooltip';
 import { ETranslations } from '@onekeyhq/shared/src/locale';
 import { EModalRoutes, EModalStakingRoutes } from '@onekeyhq/shared/src/routes';
-import earnUtils from '@onekeyhq/shared/src/utils/earnUtils';
 import { numberFormat } from '@onekeyhq/shared/src/utils/numberUtils';
 import type {
   IEarnPortfolioPosition,
@@ -41,11 +40,13 @@ import { EarnTestIDs } from '../../../testIDs';
 
 import { isCheckRow } from './earnPositionModel';
 import {
+  canRedeemFromCard,
   hasPositionDetailPage,
   toPositionCancel,
   toPositionClaim,
   toPositionRewardClaim,
 } from './myPortfolio.utils';
+import { getDemoSectionTitle } from './positionRowActionsDemo';
 
 import type {
   IEarnPositionSectionAsset,
@@ -75,21 +76,6 @@ function daysLeftOf(unlockAt: number | undefined): number | undefined {
   }
   const days = Math.ceil((unlockAt - Date.now()) / DAY_MS);
   return days > 0 ? days : undefined;
-}
-
-/**
- * Redeem on a deposit follows the detail page's footer: Pendle sells its PT
- * instead (Sell early / Redeem at maturity, on its own page), Ethena USDe is
- * managed rather than redeemed, and a holding with no page has nothing to
- * open.
- */
-function canRedeemFromCard(position: IEarnPortfolioPosition): boolean {
-  const { manage } = position.earn;
-  return (
-    hasPositionDetailPage(position) &&
-    !earnUtils.isPendleProvider({ providerName: manage.provider }) &&
-    manage.symbol.toUpperCase() !== 'USDE'
-  );
 }
 
 type IRowAction =
@@ -396,6 +382,7 @@ export function PositionPanels({
   /** Redeem on the deposit rows; the detail page has it in its footer instead */
   showRedeem: boolean;
 }) {
+  const intl = useIntl();
   const navigation = useAppNavigation();
   const { source } = position;
   const rows = position.sections.map((section) => ({
@@ -437,7 +424,7 @@ export function PositionPanels({
           bg="$bgSubdued"
         >
           <SizableText size="$bodySmMedium" color="$textSubdued" py="$1">
-            {section.title}
+            {getDemoSectionTitle(section.kind, intl.locale) ?? section.title}
           </SizableText>
           {section.assets.map((asset, index) => (
             <PositionRow
