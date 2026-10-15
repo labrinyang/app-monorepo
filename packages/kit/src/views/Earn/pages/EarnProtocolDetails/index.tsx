@@ -978,7 +978,13 @@ const DetailsPartComponent = ({
   // the server's Portfolio read model otherwise.
   let portfolioContent: ReactNode = null;
   if (pagePosition) {
-    portfolioContent = <PositionPortfolioTab position={pagePosition} />;
+    portfolioContent = (
+      <PositionPortfolioTab
+        position={pagePosition}
+        canRedeem={canRedeem}
+        onRedeem={onRedeem}
+      />
+    );
   } else if (detailInfo?.mobilePortfolio?.groups?.length) {
     portfolioContent = (
       <PortfolioTab
@@ -1624,11 +1630,12 @@ const EarnProtocolDetailsPage = ({ route }: { route: IRouteProps }) => {
     ],
   );
   // Product demo (10-14): the web preview's account holds none of the demo
-  // positions, so the demo holding decides whether the footer can redeem.
+  // positions, so the demo holding decides, for the footer and the rows.
   const demoCanRedeem = getDemoPageCanRedeem(pagePosition);
   const canRedeem =
-    Boolean(detailInfo?.mobilePortfolio?.capabilities.redeem) ||
-    redeemWithoutActions;
+    demoCanRedeem ??
+    (Boolean(detailInfo?.mobilePortfolio?.capabilities.redeem) ||
+      redeemWithoutActions);
 
   const tabBarHeight = useScrollContentTabBarOffset();
 

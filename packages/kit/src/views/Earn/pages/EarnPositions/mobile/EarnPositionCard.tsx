@@ -42,6 +42,7 @@ import { isCheckRow } from './earnPositionModel';
 import {
   canRedeemFromCard,
   hasPositionDetailPage,
+  sellsEarly,
   toPositionCancel,
   toPositionClaim,
   toPositionRewardClaim,
@@ -79,32 +80,34 @@ function daysLeftOf(unlockAt: number | undefined): number | undefined {
 }
 
 type IRowAction =
-  | { kind: 'redeem' }
+  | { kind: 'redeem'; sellEarly: boolean }
   | { kind: 'button'; claim: IEarnPositionClaim }
   | { kind: 'pending' };
 
 /**
  * What a row offers, the way the detail page's Portfolio row does (product
- * 10-14): Redeem on a deposit, the server's Claim (or Lista's Check) on a
- * reward, a Pending badge on a reward the user cannot claim yet, Cancel on a
- * withdrawal the provider lets be called back, and Claim on the principal
- * out of its cooldown. A withdrawal shows its days left either way.
+ * 10-14, 10-15: every row the user can act on carries its action): Redeem on
+ * a deposit (Sell early for a Pendle PT before maturity), the server's Claim
+ * (or Lista's Check) on a reward, a Pending badge on a reward the user cannot
+ * claim yet, Cancel on a withdrawal the provider lets be called back, and
+ * Claim on the principal out of its cooldown. A withdrawal shows its days
+ * left either way.
  */
 function rowActionOf({
   section,
   asset,
-  showRedeem,
+  canRedeem,
 }: {
   section: IEarnPositionSectionView;
   asset: IEarnPositionSectionAsset;
-  showRedeem: boolean;
+  canRedeem: boolean;
 }): IRowAction | undefined {
   switch (section.kind) {
     // A loan's Supplied and Borrowed rows carry none: taking collateral out
     // or repaying moves the health factor, which the Borrow flows handle.
     case 'deposited':
-      return showRedeem && canRedeemFromCard(asset.origin)
-        ? { kind: 'redeem' }
+      return canRedeem
+        ? { kind: 'redeem', sellEarly: sellsEarly(asset.origin) }
         : undefined;
     case 'rewards': {
       if (asset.status === 'pending') {
@@ -180,9 +183,9 @@ function DaysLeftText({ days }: { days: number }) {
 type IRowButton = Extract<IRowAction, { kind: 'redeem' | 'button' }>;
 
 /**
- * A row's Redeem, Claim, Check or Cancel: the app's small secondary button,
- * the same for every action. Several rows of a panel can read "Claim", so a
- * screen reader hears the token as well.
+ * A row's Redeem (or Sell early), Claim, Check or Cancel: the app's small
+ * secondary button, the same for every action. Several rows of a panel can
+ * read "Claim", so a screen reader hears the token as well.
  */
 function RowAction({
   action,
@@ -195,7 +198,11 @@ function RowAction({
 }) {
   const intl = useIntl();
   if (action.kind === 'redeem') {
-    const label = intl.formatMessage({ id: ETranslations.earn_redeem });
+    const label = intl.formatMessage({
+      id: action.sellEarly
+        ? ETranslations.defi_sell_early
+        : ETranslations.earn_redeem,
+    });
     return (
       <Button
         testID={EarnTestIDs.portfolioRedeemButton}
@@ -371,16 +378,20 @@ function PositionRow({
 /**
  * The card's panels, on My portfolio and on the detail page's Portfolio
  * tab alike (product 10-14): one panel per section, its title on top, the
- * token rows under it, each with its own status and action. The detail
- * page leaves Redeem to its footer.
+ * token rows under it, each with its own status and action.
  */
 export function PositionPanels({
   position,
-  showRedeem,
+  pageRedeem,
 }: {
   position: IEarnPositionView;
-  /** Redeem on the deposit rows; the detail page has it in its footer instead */
-  showRedeem: boolean;
+  /**
+   * The detail page's own Redeem, its footer's: a deposit row offers it
+   * when the footer does and runs the page's handler, which knows the
+   * provider. Without it (My portfolio) a deposit row follows the
+   * holding's rules and opens the manage page.
+   */
+  pageRedeem?: { canRedeem: boolean; onRedeem?: () => void };
 }) {
   const intl = useIntl();
   const navigation = useAppNavigation();
@@ -388,16 +399,26 @@ export function PositionPanels({
   const rows = position.sections.map((section) => ({
     section,
     actions: section.assets.map((asset) =>
-      rowActionOf({ section, asset, showRedeem }),
+      rowActionOf({
+        section,
+        asset,
+        canRedeem: pageRedeem
+          ? pageRedeem.canRedeem
+          : canRedeemFromCard(asset.origin),
+      }),
     ),
   }));
 
-  // Same destination as the detail page's Redeem for most providers: the
-  // manage page on its withdraw tab. Providers that redeem per position
-  // (Babylon, Stakefish SOL/ETH, Everstake SOL) open their position picker
-  // from the detail page, which knows the provider's actions; the card does
-  // not, so wiring those is left to the implementation.
   const handleRedeem = useCallback(() => {
+    if (pageRedeem) {
+      pageRedeem.onRedeem?.();
+      return;
+    }
+    // Same destination as the detail page's Redeem for most providers: the
+    // manage page on its withdraw tab. Providers that redeem per position
+    // (Babylon, Stakefish SOL/ETH, Everstake SOL) open their position picker
+    // from the detail page, which knows the provider's actions; the card does
+    // not, so wiring those is left to the implementation.
     const { manage } = source.earn;
     navigation.pushModal(EModalRoutes.StakingModal, {
       screen: EModalStakingRoutes.ManagePosition,
@@ -410,7 +431,7 @@ export function PositionPanels({
         tokenImageUri: source.assets[0]?.meta?.logoUrl,
       },
     });
-  }, [navigation, source]);
+  }, [navigation, pageRedeem, source]);
 
   return (
     <YStack gap="$3">
@@ -611,7 +632,7 @@ function EarnPositionCardCmp({
         <DeFiPositionHealthFactorRow healthFactor={meta.healthFactor} />
       ) : null}
 
-      <PositionPanels position={position} showRedeem />
+      <PositionPanels position={position} />
     </YStack>
   );
 }

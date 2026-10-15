@@ -13,6 +13,7 @@ import type {
 import { buildEarnPortfolioView } from './earnPositionModel';
 import {
   ACCRUING_TOOLTIP,
+  CANCEL_BUTTON,
   EARN_PORTFOLIO_POSITIONS_FIXTURE,
   token,
 } from './earnPositionModel.fixtures';
@@ -144,6 +145,21 @@ function sparkPendingReward(
   ];
 }
 
+/**
+ * Bitway's normal unstake can be called back while it waits (the detail
+ * page's own tip: "cancellable while pending"), but neither the positions
+ * API nor the detail page sends the Cancel yet (backend request), so the
+ * demo gives each Bitway withdrawal the Cancel Native's comes with.
+ */
+function bitwayCancel(
+  position: IEarnPortfolioPosition,
+): Partial<IEarnPortfolioPosition['earn']> {
+  if (position.protocol !== 'bitway' || !position.earn.unstaking) {
+    return {};
+  }
+  return { action: 'cancel', cancel: CANCEL_BUTTON };
+}
+
 type ITranslate = (id: ETranslations) => string;
 
 /**
@@ -242,7 +258,11 @@ function buildDemoResponse(
           ...sparkPendingReward(position),
           ...morphoLoanPendingReward(position),
         ],
-        earn: { ...withDemoEarnings24h(position), ...shiftedUnstaking },
+        earn: {
+          ...withDemoEarnings24h(position),
+          ...shiftedUnstaking,
+          ...bitwayCancel(position),
+        },
       };
     });
     positions[networkId] = localizeButtonLabels(
@@ -326,13 +346,14 @@ export function useDemoPagePosition({
 }
 
 /**
- * Whether the detail page's footer can redeem the holding. The web
- * preview's account holds none of the demo positions, so the server answers
- * that nothing can be redeemed and the footer's Redeem greys out; the demo
- * asks the card's rule instead. Production keeps the server's answer: for
- * the test address's real holdings it matched the card's rule (checked
- * 10-14: Lido, Morpho, Spark, Bitway and Lista redeem; Ethena USDe and
- * Pendle do not).
+ * Whether the detail page can redeem the holding, for its footer and its
+ * deposit rows. The web preview's account holds none of the demo positions,
+ * so the server answers that nothing can be redeemed and the footer's Redeem
+ * greys out; the demo asks the card's rule instead. Production keeps the
+ * server's answer: for the test address's real holdings it matched the
+ * card's rule (checked 10-14: Lido, Morpho, Spark, Bitway and Lista redeem;
+ * Ethena USDe does not). Pendle's footer sells rather than redeems and does
+ * not read this.
  */
 export function getDemoPageCanRedeem(
   position: IEarnPositionView | undefined,

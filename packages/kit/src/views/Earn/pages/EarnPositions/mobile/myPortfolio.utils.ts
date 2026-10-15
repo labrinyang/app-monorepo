@@ -76,18 +76,33 @@ export function hasPositionDetailPage(
 }
 
 /**
- * Redeem on a deposit follows the detail page's footer: Pendle sells its PT
- * instead (Sell early / Redeem at maturity, on its own page), Ethena USDe is
- * managed rather than redeemed, and a holding with no page has nothing to
- * open.
+ * A deposit's way out follows the detail page's footer (product 10-15: every
+ * row the user can act on carries its action): Redeem, or Sell early for a
+ * Pendle PT before maturity. Ethena USDe is managed rather than redeemed, and
+ * a holding with no page has nothing to open.
  */
 export function canRedeemFromCard(position: IEarnPortfolioPosition): boolean {
   const { manage } = position.earn;
   return (
     hasPositionDetailPage(position) &&
-    !earnUtils.isPendleProvider({ providerName: manage.provider }) &&
-    manage.symbol.toUpperCase() !== 'USDE'
+    (earnUtils.isPendleProvider({ providerName: manage.provider }) ||
+      manage.symbol.toUpperCase() !== 'USDE')
   );
+}
+
+/**
+ * A Pendle PT before its market matures is sold rather than redeemed: the
+ * detail page's footer reads Sell early until maturity, and so does the row.
+ */
+export function sellsEarly(position: IEarnPortfolioPosition): boolean {
+  const { earn } = position;
+  if (!earnUtils.isPendleProvider({ providerName: earn.manage.provider })) {
+    return false;
+  }
+  const matured =
+    earn.matured ??
+    (earn.maturityAt !== undefined && earn.maturityAt <= Date.now());
+  return !matured;
 }
 
 const EMPTY_TEXT = { text: '' };

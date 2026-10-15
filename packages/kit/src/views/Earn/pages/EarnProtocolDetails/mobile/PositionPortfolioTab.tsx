@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import BigNumber from 'bignumber.js';
 import { useIntl } from 'react-intl';
 
@@ -15,22 +17,35 @@ import type { IEarnPositionView } from '../../EarnPositions/mobile/earnPositionM
 /**
  * The detail page's Portfolio tab, product 10-14: My investment, then the
  * holding's card panels exactly as My portfolio draws them. The page title
- * already names the holding, so the card's header line is left out, and the
- * page footer owns Redeem, so the deposit rows carry none. My investment
- * leads with the balance and the 24h earnings; the APY cell that repeated
- * the headline is gone, and Spark keeps its Effective APY (the user's own
- * rate, not the headline's).
+ * already names the holding, so the card's header line is left out. A
+ * deposit row's Redeem is the page's own, the footer's, as on the server's
+ * Portfolio tab (product 10-15: every row the user can act on carries its
+ * action): it runs the page's handler, which opens the position picker for
+ * the providers that redeem per position. My investment leads with the
+ * balance and the 24h earnings; the APY cell that repeated the headline is
+ * gone, and Spark keeps its Effective APY (the user's own rate, not the
+ * headline's).
  */
 export function PositionPortfolioTab({
   position,
+  canRedeem,
+  onRedeem,
 }: {
   position: IEarnPositionView;
+  /** whether the page's footer offers Redeem */
+  canRedeem?: boolean;
+  /** the page footer's Redeem */
+  onRedeem?: () => void;
 }) {
   const intl = useIntl();
   const currencyInfo = useCurrency();
   const earnings24h = position.source.earn.investment.earnings24hFiatValue;
   const earnings24hValue = new BigNumber(earnings24h || '0');
   const extraCells = getDemoInvestmentCells(position, intl.locale);
+  const pageRedeem = useMemo(
+    () => ({ canRedeem: Boolean(canRedeem && onRedeem), onRedeem }),
+    [canRedeem, onRedeem],
+  );
 
   return (
     <YStack gap="$6">
@@ -88,7 +103,7 @@ export function PositionPortfolioTab({
           ))}
         </XStack>
       </YStack>
-      <PositionPanels position={position} showRedeem={false} />
+      <PositionPanels position={position} pageRedeem={pageRedeem} />
     </YStack>
   );
 }
