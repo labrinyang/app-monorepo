@@ -20,10 +20,7 @@ import {
 import { canRedeemFromCard } from './myPortfolio.utils';
 import demoData from './positionRowActionsDemo.data.json';
 
-import type {
-  IEarnPositionSectionKind,
-  IEarnPositionView,
-} from './earnPositionModel';
+import type { IEarnPositionView } from './earnPositionModel';
 
 /**
  * Product demo (10-14): row actions on the phone position card, and the
@@ -366,27 +363,6 @@ export function getDemoPageCanRedeem(
       section.kind === 'deposited' &&
       section.assets.some((asset) => canRedeemFromCard(asset.origin)),
   );
-}
-
-/**
- * The title of the block for principal out of its withdrawal, waiting to
- * be claimed: Withdrawal ready (赎回待领取), product 10-14. Claimable was
- * confused with the rewards around it (the Rewards tab's claimable filter
- * uses the same word). The copy is the server Lokalise key
- * defi_position_status_withdrawal_ready, which the app's own keys do not
- * have yet, so the demo draws it; other languages read the English.
- */
-export function getDemoSectionTitle(
-  kind: IEarnPositionSectionKind,
-  locale: string,
-): string | undefined {
-  if (!DEMO_POSITION_ROW_ACTIONS || kind !== 'claimable') {
-    return undefined;
-  }
-  if (locale === 'zh-TW' || locale === 'zh-HK') {
-    return '贖回待領取';
-  }
-  return locale.startsWith('zh') ? '赎回待领取' : 'Withdrawal ready';
 }
 
 /** Cells the server would add to My investment for this holding (Spark's Effective APY). */

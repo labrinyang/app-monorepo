@@ -47,7 +47,6 @@ import {
   toPositionClaim,
   toPositionRewardClaim,
 } from './myPortfolio.utils';
-import { getDemoSectionTitle } from './positionRowActionsDemo';
 
 import type {
   IEarnPositionSectionAsset,
@@ -393,7 +392,6 @@ export function PositionPanels({
    */
   pageRedeem?: { canRedeem: boolean; onRedeem?: () => void };
 }) {
-  const intl = useIntl();
   const navigation = useAppNavigation();
   const { source } = position;
   const rows = position.sections.map((section) => ({
@@ -445,7 +443,7 @@ export function PositionPanels({
           bg="$bgSubdued"
         >
           <SizableText size="$bodySmMedium" color="$textSubdued" py="$1">
-            {getDemoSectionTitle(section.kind, intl.locale) ?? section.title}
+            {section.title}
           </SizableText>
           {section.assets.map((asset, index) => (
             <PositionRow
